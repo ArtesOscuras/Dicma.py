@@ -27,6 +27,7 @@ import argparse
 from itertools import product
 import re
 from collections import Counter
+import unicodedata
 
 # General variables
 LIGHT_MODE = False
@@ -109,6 +110,12 @@ def save_list_to_file(list_, filename):
         verbose_print(f"[+] Dictionary saved successfully to: {filename}")
     except Exception as e:
         print(f"Error saving dictionary: {e}", file=sys.stderr)
+
+def remove_accents(input_str):
+    return ''.join(
+        c for c in unicodedata.normalize('NFD', input_str)
+        if unicodedata.category(c) != 'Mn'
+    )
 
 def generate_usernames(person_name):
     parts = person_name.strip().split()

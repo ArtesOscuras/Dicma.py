@@ -289,9 +289,16 @@ def generate_password_list(word):
     # GENERATING BASIC PATTERN:
     basic_pattern = []
     word = str(word).lower()
+    word_no_punctuation = remove_accents(word)
+    
     basic_pattern.append(word)
     basic_pattern.append(word.upper())
     basic_pattern.append(word.capitalize())
+    basic_pattern.append(word_no_punctuation)
+    basic_pattern.append(word_no_punctuation.upper())
+    basic_pattern.append(word_no_punctuation.capitalize()) 
+
+    basic_pattern = list(set(basic_pattern))
     
     transform_1 = [item.replace("a", "@").replace("A", "@") for item in basic_pattern]
     basic_pattern.extend(transform_1)

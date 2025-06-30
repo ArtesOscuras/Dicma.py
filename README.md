@@ -2,9 +2,10 @@
 
 ### Dicma creates massive wordlists based on specific words for password cracking.
 
-It includes extracted patterns from rockyou.txt dictionary to "passworize" any specific word or concept. 
-Commontly users use a specific word or concept to create their passwords. They modify the concept with simbols, and also they attach numbers and simbols to acomplish the password requirements.
-Unfortunatly this behavior coult be predicteble because some of this patterns are used more than others. Dicma extract this patterns from masive dictionaryes and you can even use your specific dicitonary to extract the patterns. All possible combinations are returned for password cracking purpose, using hashcat, john the ripper, or any other software.
+It includes extracted patterns from the rockyou.txt dictionary to "passworize" any specific word or concept.
+Users often create passwords based on specific words or concepts. They modify these with symbols, numbers, and capitalization to meet password requirements.
+
+Unfortunately, this behavior can be predictable, as some patterns are more commonly used than others. Dicma extracts these patterns from massive dictionaries, and you can even use your own custom dictionary to extract patterns. All possible combinations are returned for password cracking purposes using tools like Hashcat, John the Ripper, or others.
 
 ```
 usage: dicma.py [-h] (-u USERS | -p PASSWORD) [-l] [-f] [-nv] [-d file_name] [-o file_name]
@@ -28,8 +29,10 @@ optional arguments:
 
 ### USERS mode:
 
-This mode allows you to introduce a list of specific names and surnames from users that you expect to find in an Active directory enviroment and creates a list of all possible combinations based on the most used metods from IT departments.
-The input can be a file, containing names and surnames (one per line) or an string like "john kenedy, albert random, patrick harper, ...". The output cand be printed on termianl or stored in a file with `-o` flag.
+This mode allows you to input a list of usernames and surnames (e.g., from an Active Directory environment) and generates a list of possible combinations based on commonly used naming patterns in IT departments.
+
+Input can be a file (one name per line) or a string like "john kenedy, albert random, patrick harper, ...".
+The output can be printed to the terminal or saved to a file using the `-o` flag.
 
 Example: The user "John Kenedy" will be processed like:
 
@@ -47,9 +50,10 @@ john-k
 
 ### PASSWORD mode:
 
-This is the main mode of this tool, and can generate a massive list of possible password based on specific words or concetps. You can introduce this words from a text file (one per line) or a list like "hotel, ibis, corporate, ...". Output can be printed throug terminal or (more recomended) stored in a file with `-o` flag.
+This is the main mode of the tool and can generate a massive list of possible passwords based on specific words or concepts. You can provide these words via a text file (one per line) or a list like "hotel, ibis, corporate, ...".
+The output can be shown in the terminal or (recommended) saved to a file with the `-o` flag.
 
-Example: word "hotel" will be processed like:
+Example: The word "hotel" will be processed like:
 
 `python3 dicma.py -p "hotel"`
 
@@ -65,6 +69,22 @@ h0tel123!
 ...
 ```
 
-`--dictionary` flag allows you to specify specific dicionary from wich you want to extract the patterns. By default, will use internaly stored patterns extracted from a famous dictionary (rockyou.txt)
+Use the `--dictionary` flag to specify a custom dictionary to extract patterns from.
+By default, Dicma uses internal patterns extracted from the famous rockyou.txt dictionary.
 
 `python3 dicma.py -p words.txt -o dictionary.txt -d rockyou.txt`
+
+The `-l` flag enables LIGHT mode, which produces a shorter dictionary output (5,000–10,000 lines). 
+
+`python3 dicma.py -p words.txt -o dictionary.txt -l`
+
+The `-f` flag enables FULL mode, which generates a massive dictionary output (~5,000,000 lines).
+
+`python3 dicma.py -p words.txt -o dictionary.txt -l`
+
+The `-nv` flag disables verbose output and only prints the dictionary. Errors will still be displayed.
+
+`python3 dicma.py -p words.txt -vn > dictionary.txt`
+
+Massive mode: this is triggered automatically when Dicma detects a large input. It will display progress information and estimated output size.
+In massive mode, an output file is required. If you don’t specify one with the -o flag, Dicma will default to saving it in `./output.txt`.

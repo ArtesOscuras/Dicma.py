@@ -78,13 +78,13 @@ By default, Dicma uses internal patterns extracted from the famous rockyou.txt d
 
 <br>
 
-The `-l` flag enables LIGHT mode, which produces a shorter dictionary output (5,000–10,000 lines). 
+The `-l` flag enables LIGHT mode, which produces a shorter dictionary output (5,000–10,000 lines x word). 
 
 `python3 dicma.py -p words.txt -o dictionary.txt -l`
 
 <br>
 
-The `-f` flag enables FULL mode, which generates a massive dictionary output (~5,000,000 lines).
+The `-f` flag enables FULL mode, which generates a massive dictionary output (~5,000,000 lines x word).
 
 `python3 dicma.py -p words.txt -o dictionary.txt -l`
 

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-# TODO -> Passwords generated are using too much RAM memory.
+# This project is from ArtesOscuras github repo.
 
 #-----------------------------------------------------
 # INTERNAL CONFIGURATION PARAMETERS FOR PASSWORD MODE:

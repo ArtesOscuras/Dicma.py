@@ -259,11 +259,11 @@ def massive_mode(list_, output_file_name):
         verbose_print("[!] Output file required for the massive mode. Saving results to -> " + str(output_file_name))
     
     # Estimated file size
-    output_size_lines = len(list_) * 25_000
+    output_size_lines = len(list_) * 900000
     if LIGHT_MODE == True:
-        output_size_lines = len(list_) * 500_000
+        output_size_lines = len(list_) * 25000
     if FULL_MODE == True:
-        output_size_lines = len(list_) * 5_000_000
+        output_size_lines = len(list_) * 8000000
     avg_line_size_bytes = 16
     estimated_size_bytes = output_size_lines * avg_line_size_bytes
     estimated_size_gb =  round(estimated_size_bytes / (1024 ** 3), 2)

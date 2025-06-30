@@ -69,22 +69,32 @@ h0tel123!
 ...
 ```
 
+<br>
+
 Use the `--dictionary` flag to specify a custom dictionary to extract patterns from.
 By default, Dicma uses internal patterns extracted from the famous rockyou.txt dictionary.
 
 `python3 dicma.py -p words.txt -o dictionary.txt -d rockyou.txt`
 
+<br>
+
 The `-l` flag enables LIGHT mode, which produces a shorter dictionary output (5,000–10,000 lines). 
 
 `python3 dicma.py -p words.txt -o dictionary.txt -l`
+
+<br>
 
 The `-f` flag enables FULL mode, which generates a massive dictionary output (~5,000,000 lines).
 
 `python3 dicma.py -p words.txt -o dictionary.txt -l`
 
+<br>
+
 The `-nv` flag disables verbose output and only prints the dictionary. Errors will still be displayed.
 
 `python3 dicma.py -p words.txt -vn > dictionary.txt`
+
+<br>
 
 Massive mode: this is triggered automatically when Dicma detects a large input. It will display progress information and estimated output size.
 In massive mode, an output file is required. If you don’t specify one with the -o flag, Dicma will default to saving it in `./output.txt`.

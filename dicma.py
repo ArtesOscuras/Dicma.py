@@ -261,7 +261,7 @@ def massive_mode(list_, output_file_name):
     # Estimated file size
     output_size_lines = len(list_) * 900000
     if LIGHT_MODE == True:
-        output_size_lines = len(list_) * 25000
+        output_size_lines = len(list_) * 7700
     if FULL_MODE == True:
         output_size_lines = len(list_) * 8000000
     avg_line_size_bytes = 16

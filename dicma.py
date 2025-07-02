@@ -458,7 +458,7 @@ def main():
         output_file_name = args.output
         verbose_print("Dictionary will be stored in this file -> "+str(output_file_name))
     if args.machine_learning_model:
-        print('[-] Sorry, this section is under construction yet!, Exiting...')
+        print('[-] Sorry, MACHINE LEARNING section is under construction yet!, Exiting...')
         sys.exit(1)
         
     if args.dictionary is not None:

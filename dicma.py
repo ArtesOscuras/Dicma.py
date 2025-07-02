@@ -489,6 +489,10 @@ def main():
             sys.exit(0)
 
     elif args.password is not None:
+        if args.machine_learning_model is not None:
+            #file_or_not = detec_if_file_or_not(args.password)
+            #ml_list = machine_learning_cracking(args.machine_learning_model)
+            sys.exit(0)
         if args.password.strip() == "":
             print("Error: This argument can not be empty", file=sys.stderr)
             sys.exit(1)

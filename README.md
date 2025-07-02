@@ -117,7 +117,7 @@ The `-ml` flag will allow you to set the machine learning model. You can downloa
 
 <br>
 
-The `-n` flag will allow you to specify how many neighbors you want for any input word.
+The `-n` flag will allow you to specify how many neighbors you want for any input word (20 by default).
 
 `python3 dicma.py -p words.txt -o dictionary.txt -l -ml cc.es.300.bin -n 100`
 

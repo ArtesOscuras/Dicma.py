@@ -159,7 +159,7 @@ def generate_usernames(person_name):
 def normalize_list(input_):
     file_or_not = detec_if_file_or_not(input_)
     if file_or_not == True:
-        with open(file_name, 'r', encoding='utf-8') as file_:
+        with open(input_, 'r', encoding='utf-8') as file_:
             words_list = [line.strip() for line in file_ if line.strip()]
             return words_list
     else:

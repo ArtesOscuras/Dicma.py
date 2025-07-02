@@ -255,7 +255,7 @@ def find_neighbours(model,word,number):
     words += [text for text in almost_words if valid(text)]
     return words
     
-def find_neighbours_windows(model, word, number):
+def find_neighbours_windows(model, word, number): # CAREFULL, IS LOADING THE FULL MODEL FOR EVERY FUCKING WORD... THIS WILL NEED TO BE FIX...
     command = ["fasttext.exe", "nn", model, str(number)]
     process = subprocess.Popen(
         command,

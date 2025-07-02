@@ -111,9 +111,9 @@ Only available for password mode. This mode will allow you to use a machine lear
 
 <br>
 
-The `-ml` flag will allow you to set the machine learning model. You can download this trained models from -> https://fasttext.cc/docs/en/pretrained-vectors.html
+The `-ml` flag will allow you to set the machine learning model. You can download this trained models from -> https://fasttext.cc/docs/en/crawl-vectors.html
 
-(You need to download the .bin file, the "bin+text", for the lenguage you want.)
+(You need to download the .bin file for the lenguage you want.)
 
 <br>
 

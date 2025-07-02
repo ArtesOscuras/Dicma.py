@@ -298,7 +298,7 @@ def ml_process_pwd(list_, ml_model, number_neighbours):
             except Exception:
                 print("[-] Sorry but doesn't looks like your input file is a valid ML model.")
                 print("  You can get this Machine Learning traind models from this website:")
-                print("  https://fasttext.cc/docs/en/pretrained-vectors.html")
+                print("  https://fasttext.cc/docs/en/crawl-vectors.html")
                 print("  You need the .bin file for the lenguage you want.")
                 sys.exit(1)
 

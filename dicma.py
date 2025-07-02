@@ -507,9 +507,9 @@ def extract_patterns(file_input):
             symbols.extend(found_symbols)
             verbose_print("[+] Symbol patterns successfully extracted")
 
-    sorted_sufixs = [item for item, count in Counter(sufixs).most_common() if count >= 3]
-    sorted_prefixs = [item for item, count in Counter(prefixs).most_common() if count >= 3]
-    sorted_numbers = [item for item, count in Counter(numbers).most_common() if count >= 3]
+    sorted_sufixs = [item for item, count in Counter(sufixs).most_common() if count >= 2]
+    sorted_prefixs = [item for item, count in Counter(prefixs).most_common() if count >= 2]
+    sorted_numbers = [item for item, count in Counter(numbers).most_common() if count >= 2]
     sorted_symbols = [item for item, count in Counter(symbols).most_common() if count >= 2]
 
     return sorted_sufixs, sorted_prefixs, sorted_numbers, sorted_symbols
@@ -540,9 +540,9 @@ def main():
     parser.add_argument('-l', '--light', action='store_true', help='Light mode, for small list (passwd mode).')
     parser.add_argument('-f', '--full', action='store_true', help='Full mode. Warning, the output could be very heavy (passwd mode).')
     parser.add_argument('-nv','--no-verbose', action='store_true', help='Remove any output except the dictionary itself (Errors will be shown anyway).')
-    parser.add_argument('-d','--dictionary', metavar='file_name', help='Extract patterns from your an specific dictionary')
+    parser.add_argument('-d','--dictionary', metavar='file_name', help='Extract patterns from your an specific dictionary.')
     parser.add_argument('-o', '--output', metavar='file_name', help='Dictionary will be stored in this file.')
-    parser.add_argument('-ml', '--machine-learning-model', metavar='file_name', help='Use a trained machine learning model to include neighbors of your original words')
+    parser.add_argument('-ml', '--machine-learning-model', metavar='file_name', help='Use a trained machine learning model to include neighbors of your original words.')
     parser.add_argument('-n', '--neighbours-number', metavar='integer', help='Ammount of neighbors for each word (20 by Default).')
 
     args = parser.parse_args()
@@ -554,10 +554,11 @@ def main():
         VERBOSE = False
     if args.light:
         LIGHT_MODE = True
-        verbose_print("[+] Light mode enabled")
+        verbose_print("[+] Light mode enabled.")
     if args.full:
         FULL_MODE = True
-        verbose_print("[+] Full mode enabled. Warning, the output could be very heavy.")
+        verbose_print("[+] Full mode enabled.")
+        verbose_print("[!] Warning, the output could be very heavy.")
     if args.output:
         OUTPUT_FILE_BULEAN = True
         output_file_name = args.output
@@ -565,7 +566,7 @@ def main():
         
     if args.dictionary is not None:
         if is_a_valid_file(args.dictionary):
-            verbose_print("[+] Using "+str(args.dictionary)+" as a dictionary")
+            verbose_print("[+] Using "+str(args.dictionary)+" as a dictionary.")
         else:
             print("[!] File introduced as dictionary is not valid. Exiting...")
             sys.exit(1)
@@ -598,7 +599,7 @@ def main():
         
         if args.machine_learning_model is not None:                  # Section under development
             if detec_if_file_or_not(args.machine_learning_model) == False:
-                print("[-] Your -ml <input> is not even a file...  ¬¬ , set a file here")
+                print("[-] Your -ml <input> is not even a file...  ¬¬ , set a file here.")
                 sys.exit(1)
             if args.neighbours_number is not None:
                 NEIGHBORS_AMMOUNT = int(args.neighbours_number)

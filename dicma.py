@@ -256,7 +256,7 @@ def find_neighbours(model,word,number):
     return words
     
 def find_neighbours_windows(model, word, number):
-    command = ["fasttext.exe", "nn", model, "-k", str(number)]
+    command = ["fasttext.exe", "nn", model, str(number)]
     process = subprocess.Popen(
         command,
         stdin=subprocess.PIPE,
@@ -276,9 +276,7 @@ def find_neighbours_windows(model, word, number):
         parts = line.strip().split()
         if len(parts) >= 1:
             neighbors.append(parts[0])
-            
-    pre_words = neighbors
-    semi_words = [text for _, text in pre_words]
+    semi_words = neighbors
     almost_words = [text for text in semi_words if '.' not in text]
     def valid(text):
         return all(not c.isupper() for c in text[1:])
@@ -298,7 +296,7 @@ def ml_process_pwd(list_, ml_model, number_neighbours):
             except Exception:
                 print("[-] Sorry but doesn't looks like your input file is a valid ML model.")
                 print("  You can get this Machine Learning traind models from this website:")
-                print("  https://fasttext.cc/docs/en/crawl-vectors.html")
+                print("  https://fasttext.cc/docs/en/pretrained-vectors.html")
                 print("  You need the .bin file for the lenguage you want.")
                 sys.exit(1)
 
@@ -348,7 +346,7 @@ def ml_process_pwd(list_, ml_model, number_neighbours):
         words_list = []
         for word in list_:
             print("[+] Processing -> "+str(word))
-            neighbors = find_neighbours_windows(model, word, number_neighbours)
+            neighbors = find_neighbours_windows(ml_model, word, number_neighbours)
             for neighbor in neighbors:
                 words_list.append(neighbor)
         verbose_print("[+] Neighbors found successfully.")

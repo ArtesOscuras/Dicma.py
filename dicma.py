@@ -25,6 +25,7 @@ import sys
 import os
 import argparse
 from itertools import product
+import threading
 import re
 from collections import Counter
 import unicodedata
@@ -42,38 +43,40 @@ BASIC_PREFIXS = ['1', '2', '4', '123', '3', '*', '12', '7', '5', '8', '6', '13',
 NUMERIC_PATTERNS = ['1', '2', '4', '3', '123', '7', '12', '5', '0', '8', '13', '6', '9', '11', '23', '22', '10', '14', '07', '21', '01', '15', '08', '06', '16', '18', '69', '17', '24', '05', '19', '09', '20', '25', '88', '03', '00', '27', '04', '02', '33', '89', '26', '99', '1234', '28', '77', '101', '92', '2007', '93', '87', '29', '94', '2006', '143', '90', '91', '30', '95', '2008', '55', '31', '100', '86', '666', '34', '44', '32', '96', '85', '45', '007', '84', '98', '1994', '78', '66', '2005', '1992', '1993', '83', '82', '12345', '97', '1991', '1995', '79', '1990', '81', '1989', '56', '777', '1987', '76', '420', '321', '111', '35', '67', '1996', '80', '2000', '1988', '42', '75', '123456', '50', '2009', '74', '2004', '1986', '72', '54', '36', '456', '1985', '73', '43', '1984', '64', '2003', '68', '37', '40', '333', '001', '52', '65', '47', '41', '71', '1997', '57', '1983', '555', '2002', '999', '1982', '911', '38', '1980', '2001', '46', '63', '70', '1981', '48', '51', '53', '58', '789', '62', '39', '2010', '59', '619', '49', '1979', '222', '121', '000', '1998', '112', '1978', '123456789', '60', '61', '888', '234', '159', '1212', '247', '200', '1977', '213', '786', '1999', '125', '182', '1976', '187', '1975', '147', '214', '1974', '1973', '102', '305', '1010', '6969', '124', '1972', '212', '360', '987', '1000', '411', '345', '1969', '012', '808', '313', '311', '210', '1313', '1970', '369', '500', '120', '300', '316', '711', '122', '1971', '009', '1111', '444', '323', '520', '135', '2012', '246', '211', '2011', '1122', '567', '215', '103', '008', '113', '1968', '117', '225', '510', '310', '209', '1221', '110', '132', '2468', '713', '105', '003', '127', '1213', '1967', '312', '002', '223', '1012', '109', '128', '011', '818', '1966', '108', '126', '098', '202', '118', '2525', '1020', '1123', '104', '831', '1965', '115', '357', '010', '2121', '107', '714', '1314', '145', '909', '415', '900', '129', '678', '314', '224', '1964', '318', '2020', '1210', '114', '131', '2323', '718', '3000', '504', '013', '106', '4321', '1223', '1230', '221', '626', '1023', '201', '116', '005', '1011', '150', '916', '216', '512', '119', '0123', '1214', '515', '006', '412', '1963', '1224', '315', '258', '0000', '134', '217', '220', '812', '1121', '199', '890', '1001', '1231', '1024', '521', '1021', '400', '1022', '1013', '4444', '303', '1215', '1220', '421', '250', '1234567', '1216', '206', '320', '1218', '317', '707', '325', '218', '1025', '1962', '7777', '413', '1211', '1014', '219', '410', '133', '1225', '130', '600', '1029', '1205', '1960', '813', '1217', '004', '1206', '1015', '231', '1228', '1112', '912', '227', '180', '1107', '505', '654', '727', '014', '1017', '324', '1120', '1204', '1031', '513', '2222', '1016', '423', '1028', '2112', '1026', '805', '205', '1203', '156', '1018', '963', '1105', '1125', '1414', '228', '511', '1124', '021', '408', '612', '1104', '525', '2424', '1208', '232', '254', '151', '1202', '1027', '809', '319', '1103', '144', '1207', '1515', '1106', '1127', '322', '721', '913', '203', '414', '226', '54321', '137', '023', '2013', '1005', '1019', '800', '1219', '1227', '910', '1961', '326', '717', '925', '617', '951', '1229', '723', '1030', '611', '1129', '1209', '700', '817', '1959', '1226', '327', '712', '365', '1004', '710', '616', '017', '9999', '1201', '1102', '5150', '1128', '852', '198', '425', '191', '1002', '523', '623', '426', '141', '350', '1101', '516', '256', '753', '1126', '422', '419', '8888', '741', '155', '1108', '1130', '169', '787', '190', '1234567890', '501', '252', '242', '613', '915', '610', '2014', '2015', '2016', '2017', '2018', '2019', '2021', '2021', '2023', '2024', '2025', '2026', '2027', '2028', '2029', '2030']
 SYMBOLIC_PATTERNS = ['.', '-', '!', '@', '*', '/', '#', '&', ',', '$', '+', '=', '?', '(', ')', '**', '!!', ';', '<', '..', "'", ']', '%', '"', '~', '...', '[', '`', '="', "\\\\'", ':', '!!!', '$$', '***', '^', '--', '@@', '//', '>', '++', '??', '!@', '\\\\', ':)', 'ื', '://', '!@#', '##', "\\\\\\\\\\\\'", '.,', '{', '\\\\\\\\', ',.', '}', '$$$', '><', ',,', '()', 'ั', '้', '/*', '^^', 'ุ', '@#', 'ึ', '+-', '&&', '???', '@@@', '*/', 'ิ', '|', ';;', 'ี', '****', '==', '@!', '....', '!*', '[]', ',./', '---', '=]', '/*-', '@$', '=)', '!!!!', '.-', '#!', '~~', ',]', '´', '!@#$', '-=', '*-', ')(', '+++', '))', '?!', '=-']
 
+# Lock for threads
+lock = threading.Lock()
 
 def print_banner():
-    ascii_art = """                                                                      
+    ascii_art = """
 
-                                 .-:                                  
-                               -*%%%#+.                               
-                             =#%%%%%%%%+.                             
-                           .*%%%%%%%%%%%#-                            
-                          :#%%%%%%%%%%%%%#=                           
-                         :#*%%%#=:..=*%%%*#=                          
-                         ##%%+:       .=#@#%:                         
-                        =%%*.           .=%%#                         
-                        #%=               :#%:                        
-                       .@= .              .:%=                        
-                        #.:-             :- *:                        
-                       ...:%=           :%+ :.   -                    
-                      :%+. +%+         -%#: -#: *:                    
-                    ..::--:..=+:     .++:.:+=.:#= =                   
-                   .-=+++++=-::::   .:.  .. .+#- =-                   
-                  -+=-:...::-=+++=:.     .-*#+  *+ :                  
-                    :-=++++=-:.  ... .:=#%*-  -#- -.                  
-                 .=+=-:..........:=+###+-  .=#+. =:.                  
-                 :.  .:::.  .-+#%#*=:   .-*#+. -*:.:                  
-                   :-:.  .-#%#+-.   .-+#*+:  -*= :-                   
-                 .:.   .+%#+:    :=+*+-.  :=+=. --                    
-                      =%#-    :=++-:   .-+=:  :-.                     
-                     +%-   .-==-.   .-==:   :-:                       
-                    =*.   :=-.   .:--:   .:-:                         
-                   :+    --.   .:-:    .::.                           
-                   :    ::    .:.    .:.                              
-                       :.    :.    ...                                
-                      ..    :.    ..                                  
+                                 .-:
+                               -*%%%#+.
+                             =#%%%%%%%%+.
+                           .*%%%%%%%%%%%#-
+                          :#%%%%%%%%%%%%%#=
+                         :#*%%%#=:..=*%%%*#=
+                         ##%%+:       .=#@#%:
+                        =%%*.           .=%%#
+                        #%=               :#%:
+                       .@= .              .:%=
+                        #.:-             :- *:
+                       ...:%=           :%+ :.   -
+                      :%+. +%+         -%#: -#: *:
+                    ..::--:..=+:     .++:.:+=.:#= =
+                   .-=+++++=-::::   .:.  .. .+#- =-
+                  -+=-:...::-=+++=:.     .-*#+  *+ :
+                    :-=++++=-:.  ... .:=#%*-  -#- -.
+                 .=+=-:..........:=+###+-  .=#+. =:.
+                 :.  .:::.  .-+#%#*=:   .-*#+. -*:.:
+                   :-:.  .-#%#+-.   .-+#*+:  -*= :-
+                 .:.   .+%#+:    :=+*+-.  :=+=. --
+                      =%#-    :=++-:   .-+=:  :-.
+                     +%-   .-==-.   .-==:   :-:
+                    =*.   :=-.   .:--:   .:-:
+                   :+    --.   .:-:    .::.
+                   :    ::    .:.    .:.
+                       :.    :.    ...
+                      ..    :.    ..
                                                                       """
     print(ascii_art)
     print("Welcome to DICMA. The Dictionary Maker: \n")
@@ -82,7 +85,7 @@ def verbose_print(input_string):
     global VERBOSE
     if VERBOSE == True:
         print(input_string)
-    
+
 def detec_if_file_or_not(input_to_check):
     path_ = input_to_check
     if os.path.isfile(path_):
@@ -95,7 +98,7 @@ def system_detection():
         return "windows"
     else:
         return "linux"
-        
+
 def is_a_valid_file(file_path, blocksize=512):
     try:
         with open(file_path, 'rb') as file_:
@@ -151,7 +154,7 @@ def generate_usernames(person_name):
     ]
 
     return combinations
-    
+
 def process_file_user(file_name, output_file_name):
     global OUTPUT_FILE_BULEAN
     with open(file_name, 'r', encoding='utf-8') as file_:
@@ -172,8 +175,8 @@ def process_file_user(file_name, output_file_name):
                 combinations = generate_usernames(line_)
                 for element in combinations:
                     complet_list.append(element)
-            save_list_to_file(complet_list, output_file_name)  
-    
+            save_list_to_file(complet_list, output_file_name)
+
 def process_input_user(input_, output_file_name):
     global OUTPUT_FILE_BULEAN
     raw_list = input_.strip().split(',')
@@ -181,33 +184,20 @@ def process_input_user(input_, output_file_name):
     final_list = []
     if OUTPUT_FILE_BULEAN == False:
         for name in people_list:
-            final_list += generate_usernames(name) 
+            final_list += generate_usernames(name)
         for element in final_list:
-            print(element) 
+            print(element)
     else:
         for name in people_list:
-            final_list += generate_usernames(name) 
+            final_list += generate_usernames(name)
         save_list_to_file(final_list, output_file_name)
 
-def process_file_passwd(file_name, output_file_name):
-    global OUTPUT_FILE_BULEAN
-    global FULL_MODE
-    global LIGHT_MODE
-    with open(file_name, 'r', encoding='utf-8') as file_:
-        words_list = [line.strip() for line in file_ if line.strip()]
-    
-    # Checking for massive mode:
-    if len(words_list) >= 10 and FULL_MODE == True:
-        massive_mode(words_list, output_file_name)
-        sys.exit(0)
-    if len(words_list) >= 100 and LIGHT_MODE == False:
-        massive_mode(words_list, output_file_name)
-        sys.exit(0)       
-    if len(words_list) >= 1000:
-        massive_mode(words_list, output_file_name)
-        sys.exit(0)      
+def split_list(lst, n):
+    k, m = divmod(len(lst), n)
+    return [lst[i * k + min(i, m):(i + 1) * k + min(i + 1, m)] for i in range(n)]
 
-            
+def process_wordlist_thread(words_list, filename):
+    print("Running thread...")
     if not OUTPUT_FILE_BULEAN:
         for line in words_list:
             combinations = generate_password_list(line)
@@ -218,10 +208,36 @@ def process_file_passwd(file_name, output_file_name):
         for line in words_list:
             combinations = generate_password_list(line)
             complet_list.extend(combinations)
-        save_list_to_file(complet_list, output_file_name)
-                
-            
+        with lock:
+            save_list_to_file(complet_list, filename)
 
+def process_file_passwd(file_name, output_file_name):
+    global OUTPUT_FILE_BULEAN
+    global FULL_MODE
+    global LIGHT_MODE
+    with open(file_name, 'r', encoding='latin-1') as file_:
+        words_list = [line.strip() for line in file_ if line.strip()]
+
+    # Checking for massive mode:
+    if len(words_list) >= 10 and FULL_MODE == True:
+        massive_mode(words_list, output_file_name)
+        sys.exit(0)
+    if len(words_list) >= 100 and LIGHT_MODE == False:
+        massive_mode(words_list, output_file_name)
+        sys.exit(0)
+    if len(words_list) >= 1000:
+        massive_mode(words_list, output_file_name)
+        sys.exit(0)
+
+    n_threads = os.cpu_count()
+    lists = split_list(words_list, n_threads)
+    threads = []
+    for list in lists:
+        thread = threading.Thread(target=process_wordlist_thread, args=(list,output_file_name))
+        thread.start()
+        threads.append(thread)
+    for thread in threads:
+        thread.join()
 
 def process_input_passwd(input_, output_file_name):
     global OUTPUT_FILE_BULEAN
@@ -229,41 +245,56 @@ def process_input_passwd(input_, output_file_name):
     global LIGHT_MODE
     raw_list = input_.strip().split(',')
     words_list = [word.strip() for word in raw_list if word.strip()]
-    
+
     # Checking for massive mode:
     if len(words_list) >= 10 and FULL_MODE == True:
         massive_mode(words_list, output_file_name)
         sys.exit(0)
     if len(words_list) >= 100 and LIGHT_MODE == False:
         massive_mode(words_list, output_file_name)
-        sys.exit(0) 
+        sys.exit(0)
     if len(words_list) >= 1000:
         massive_mode(words_list, output_file_name)
         sys.exit(0)
-    
+
     final_list = []
     if OUTPUT_FILE_BULEAN == False:
         for word in words_list:
-            final_list += generate_password_list(word) 
+            final_list += generate_password_list(word)
         for element in final_list:
             print(element)
     else:
         for word in words_list:
             final_list += generate_password_list(word)
-        save_list_to_file(final_list, output_file_name)      
-        
+        save_list_to_file(final_list, output_file_name)
+
+def massive_mode_thread(list_, output_file_name):
+    print("Starting thread...")
+    with lock:
+        try:
+            with open(output_file_name, 'w', encoding='utf-8') as f:
+                for index, word in enumerate(list_):
+                    progress = (index + 1) / len(list_) * 100
+                    print(f"\r[+] Progress: {progress:.2f}%", end='', flush=True)
+                    temp_list = generate_password_list(word)
+                    f.write('\n'.join(temp_list) + '\n')
+
+        except Exception as e:
+            print(f"Error saving dictionary: {e}", file=sys.stderr)
+
+
 def massive_mode(list_, output_file_name):
     global LIGHT_MODE
     global FULL_MODE
     global OUTPUT_FILE_BULEAN
     global MASSIVE_MODE
-    
+
     verbose_print("[!] Massive mode ENABLED")
     VERBOSE = True
     if OUTPUT_FILE_BULEAN == False:
         output_file_name = "output.txt"
         verbose_print("[!] Output file required for the massive mode. Saving results to -> " + str(output_file_name))
-    
+
     # Estimated file size
     output_size_lines = len(list_) * 900000
     if LIGHT_MODE == True:
@@ -274,27 +305,22 @@ def massive_mode(list_, output_file_name):
     estimated_size_bytes = output_size_lines * avg_line_size_bytes
     estimated_size_gb =  round(estimated_size_bytes / (1024 ** 3), 2)
     verbose_print("[+] Expected file size -> " + str(estimated_size_gb) + " GB / " + str(output_size_lines) + " Lines (aprox)")
-    
-    try:
-        with open(output_file_name, 'w', encoding='utf-8') as f:
-            for index, word in enumerate(list_):
-                progress = (index + 1) / len(list_) * 100
-                print(f"\r[+] Progress: {progress:.2f}%", end='', flush=True)
-                temp_list = generate_password_list(word)
-                f.write('\n'.join(temp_list) + '\n')
-
-    except Exception as e:
-        print(f"Error saving dictionary: {e}", file=sys.stderr)
-
-    
-
+    n_threads = os.cpu_count()
+    lists = split_list(list_, n_threads)
+    threads= []
+    for list in lists:
+        thread = threading.Thread(target=massive_mode_thread, args=(list, output_file_name))
+        thread.start()
+        threads.append(thread)
+    for thread in threads:
+        thread.join()
 
 def generate_password_list(word):
     global amount_of_sufixs_used
     global amount_of_prefixs_used
     global FULL_MODE
     global LIGHT_MODE
-    
+
     if LIGHT_MODE == True:
         amount_of_sufixs_used = amount_of_sufixs_used_light_mode
         amount_of_prefixs_used = amount_of_prefixs_used_light_mode
@@ -303,16 +329,16 @@ def generate_password_list(word):
     basic_pattern = []
     word = str(word).lower()
     word_no_punctuation = remove_accents(word)
-    
+
     basic_pattern.append(word)
     basic_pattern.append(word.upper())
     basic_pattern.append(word.capitalize())
     basic_pattern.append(word_no_punctuation)
     basic_pattern.append(word_no_punctuation.upper())
-    basic_pattern.append(word_no_punctuation.capitalize()) 
+    basic_pattern.append(word_no_punctuation.capitalize())
 
     basic_pattern = list(set(basic_pattern))
-    
+
     transform_1 = [item.replace("a", "@").replace("A", "@") for item in basic_pattern]
     basic_pattern.extend(transform_1)
     transform_2 = [item.replace("o", "0").replace("O", "0") for item in basic_pattern]
@@ -326,22 +352,22 @@ def generate_password_list(word):
         basic_pattern.extend(transform_5)
         transform_6 = [item.replace("l", "1").replace("L", "1") for item in basic_pattern]
         basic_pattern.extend(transform_6)
-    
+
     non_repeated_list = []
     for item in basic_pattern:
         if item not in non_repeated_list:
             non_repeated_list.append(item)
-    
+
     # word + sufix
     word_sufixs = [a + b for a in basic_pattern for b in BASIC_SUFIXS[:amount_of_sufixs_used]]
     non_repeated_list.extend(word_sufixs)
     # prefix + word
     prefix_word = [a + b for a in BASIC_PREFIXS[:amount_of_prefixs_used] for b in basic_pattern]
-    non_repeated_list.extend(prefix_word)    
+    non_repeated_list.extend(prefix_word)
     # prefix + word + sufix
     prefix_word_sufixs = [a + b + c for a in BASIC_PREFIXS[:amount_of_prefixs_used//3] for b in basic_pattern for c in BASIC_SUFIXS[:amount_of_sufixs_used//3]]
     non_repeated_list.extend(prefix_word_sufixs)
-    
+
     # EXTENDED MODE:
     if FULL_MODE == True:
         # word + number
@@ -368,7 +394,7 @@ def generate_password_list(word):
         # number + word + simbol
         number_word_simbol = [a + b + c for a in NUMERIC_PATTERNS[:amount_of_numericpat_used] for b in basic_pattern for c in SYMBOLIC_PATTERNS[:amount_of_symbolpat_used]]
         non_repeated_list.extend(number_word_simbol)
-        
+
     non_repeated_list = list(dict.fromkeys(non_repeated_list))
     return non_repeated_list
 
@@ -381,7 +407,7 @@ def extract_patterns(file_input):
     with open(file_input, 'r', encoding='utf-8', errors='ignore') as file_:
         for linea in file_:
             linea = linea.strip()
-            
+
             match = re.search(r'(?:[^\W\d]|-){3,}', linea, flags=re.UNICODE)
             if match:
                 concept_start = match.start()
@@ -421,12 +447,12 @@ def main():
     global BASIC_PREFIXS
     global NUMERIC_PATTERNS
     global SYMBOLIC_PATTERNS
-    
+
     if len(sys.argv) == 1:
         print_banner()
-    
+
     output_file_name = ''
-    
+
     parser = argparse.ArgumentParser(description="Welcome to DICMA. The Dictionary Maker:")
 
     group = parser.add_mutually_exclusive_group(required=True)
@@ -441,7 +467,7 @@ def main():
     parser.add_argument('-ml', '--machine-learning-model', metavar='file_name', help='Use a trained machine learning model to include neighbors of your original words')
 
     args = parser.parse_args()
-    
+
     if args.light == True and args.full == True:
         print('[!] Light mode and Full mode can not be at same time. Exiting...')
         sys.exit(1)
@@ -460,7 +486,7 @@ def main():
     if args.machine_learning_model:
         print('[-] Sorry, MACHINE LEARNING section is under construction yet!, Exiting...')
         sys.exit(1)
-        
+
     if args.dictionary is not None:
         if is_a_valid_file(args.dictionary):
             verbose_print("[+] Using "+str(args.dictionary)+" as a dictionary")
@@ -508,10 +534,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-    
-    
-    
-    
-    
-    

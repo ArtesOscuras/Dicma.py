@@ -220,6 +220,7 @@ def process_passwd(words_list, output_file_name):
     global OUTPUT_FILE_BULEAN
     global FULL_MODE
     global LIGHT_MODE
+    verbose_print("[+] Creating dictionary.")
     
     # Checking for massive mode:
     if len(words_list) >= 5 and FULL_MODE == True:
@@ -308,6 +309,7 @@ def ml_process_pwd(list_, ml_model, number_neighbours):
                 neighbors = find_neighbours(model, word, number_neighbours)
                 for neighbor in neighbors:
                     words_list.append(neighbor)
+            verbose_print("[+] Neighbors found successfully.")
             return words_list
 
         except ImportError:
@@ -349,6 +351,7 @@ def ml_process_pwd(list_, ml_model, number_neighbours):
             neighbors = find_neighbours_windows(model, word, number_neighbours)
             for neighbor in neighbors:
                 words_list.append(neighbor)
+        verbose_print("[+] Neighbors found successfully.")
         return words_list
 
         
@@ -558,7 +561,7 @@ def main():
     if args.output:
         OUTPUT_FILE_BULEAN = True
         output_file_name = args.output
-        verbose_print("Dictionary will be stored in this file -> "+str(output_file_name))
+        verbose_print("[i] Dictionary will be stored in this file -> "+str(output_file_name))
         
     if args.dictionary is not None:
         if is_a_valid_file(args.dictionary):

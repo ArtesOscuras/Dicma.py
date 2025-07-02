@@ -223,13 +223,13 @@ def process_passwd(words_list, output_file_name):
     verbose_print("[+] Creating dictionary.")
     
     # Checking for massive mode:
-    if len(words_list) >= 5 and FULL_MODE == True:
+    if len(words_list) >= 2 and FULL_MODE == True:
         massive_mode(words_list, output_file_name)
         sys.exit(0)
-    if len(words_list) >= 50 and LIGHT_MODE == False:
+    if len(words_list) >= 20 and LIGHT_MODE == False:
         massive_mode(words_list, output_file_name)
         sys.exit(0) 
-    if len(words_list) >= 500:
+    if len(words_list) >= 100:
         massive_mode(words_list, output_file_name)
         sys.exit(0)
 

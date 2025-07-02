@@ -8,23 +8,27 @@ Users often create passwords based on specific words or concepts. They modify th
 Unfortunately, this behavior can be predictable, as some patterns are more commonly used than others. Dicma extracts these patterns from massive dictionaries, and you can even use your own custom dictionary to extract patterns. All possible combinations are returned for password cracking purposes using tools like Hashcat, John the Ripper, or others.
 
 ```
-usage: dicma.py [-h] (-u USERS | -p PASSWORD) [-l] [-f] [-nv] [-d file_name] [-o file_name]
+usage: dicma.py [-h] (-u USERS | -p PASSWORD) [-l] [-f] [-nv] [-d file_name] [-o file_name] [-ml file_name]
+                [-n integer]
 
 Welcome to DICMA. The Dictionary Maker:
 
-optional arguments:
+options:
   -h, --help            show this help message and exit
-  -u USERS, --users USERS
-                        File with usernames, or usernames list: "jony random,fahim jordan,..."
-  -p PASSWORD, --password PASSWORD
+  -u, --users USERS     File with usernames, or usernames list: "jony random,fahim jordan,..."
+  -p, --password PASSWORD
                         file with words to "passworize", or list like: "ibis,megacorp,..."
   -l, --light           Light mode, for small list (passwd mode).
   -f, --full            Full mode. Warning, the output could be very heavy (passwd mode).
   -nv, --no-verbose     Remove any output except the dictionary itself (Errors will be shown anyway).
-  -d file_name, --dictionary file_name
-                        Extract patterns from your specific dictionary
-  -o file_name, --output file_name
+  -d, --dictionary file_name
+                        Extract patterns from your an specific dictionary.
+  -o, --output file_name
                         Dictionary will be stored in this file.
+  -ml, --machine-learning-model file_name
+                        Use a trained machine learning model to include neighbors of your original words.
+  -n, --neighbours-number integer
+                        Ammount of neighbors for each word (20 by Default).
 ```
 
 ### USERS mode:
@@ -98,3 +102,38 @@ The `-nv` flag disables verbose output and only prints the dictionary. Errors wi
 
 Massive mode: this is triggered automatically when Dicma detects a large input. It will display progress information and estimated output size.
 In massive mode, an output file is required. If you don’t specify one with the -o flag, Dicma will default to saving it in `./output.txt`.
+
+<br>
+
+### MACHINE LEARNING mode:
+
+Only available for password mode. This mode will allow you to use a machine learning model to find the nearest possible words to the actual input words. For example, if you use "queen" as input, the nearest neighbors will be "queens", "princess", "women", etc... This will help you to find other words to passworize, but will increase your final dictionary a lot (Light mode recommended). As more details you know from the user, more keywords you will find when trying to map their mind. With this methode you can create realistic wordlists to crack the password of an specific user.
+
+<br>
+
+The `-ml` flag will allow you to set the machine learning model. You can download this trained models from -> https://fasttext.cc/docs/en/pretrained-vectors.html
+
+(You need to download the .bin file, the "bin+text", for the lenguage you want.)
+
+<br>
+
+The `-n` flag will allow you to specify how many neighbors you want for any input word.
+
+`python3 dicma.py -p words.txt -o dictionary.txt -l -ml cc.es.300.bin -n 100`
+
+<br>
+
+LINUX / MACOS USERS: For Linux and MacOS dicma will use "fasttext" python library. This can be installed like this:
+
+```
+git clone https://github.com/facebookresearch/fastText.git
+cd fastText
+sudo pip install .
+```
+More details can be found here -> https://fasttext.cc/docs/en/support.html
+
+<br>
+
+WINDOWS USERS: For Windows users "fasttext" python library have problems to be compiled so dicma will use the windows compiled binary "fasttext.exe". If the binary is not located in the same folder will prompt you to download fasttext.exe. This binary can be found at -> https://github.com/sigmeta/fastText-Windows
+
+To make sure dicma can find fasttext.exe make sure that is in your current working directory.

@@ -89,6 +89,12 @@ def detec_if_file_or_not(input_to_check):
         return True
     else:
         return False
+
+def system_detection():
+    if os.name == "nt":
+        return "windows"
+    else:
+        return "linux"
         
 def is_a_valid_file(file_path, blocksize=512):
     try:
@@ -432,6 +438,7 @@ def main():
     parser.add_argument('-nv','--no-verbose', action='store_true', help='Remove any output except the dictionary itself (Errors will be shown anyway).')
     parser.add_argument('-d','--dictionary', metavar='file_name', help='Extract patterns from your an specific dictionary')
     parser.add_argument('-o', '--output', metavar='file_name', help='Dictionary will be stored in this file.')
+    parser.add_argument('-ml', '--machine-learning-model', metavar='file_name', help='Use a trained machine learning model to include neighbors of your original words')
 
     args = parser.parse_args()
     
@@ -450,6 +457,9 @@ def main():
         OUTPUT_FILE_BULEAN = True
         output_file_name = args.output
         verbose_print("Dictionary will be stored in this file -> "+str(output_file_name))
+    if args.machine_learning_model:
+        print('[-] Sorry, this section is under construction yet!, Exiting...')
+        sys.exit(1)
         
     if args.dictionary is not None:
         if is_a_valid_file(args.dictionary):
@@ -463,6 +473,9 @@ def main():
         verbose_print("[+] Patterns successfuly extracted, creating dictionary...")
 
     if args.users is not None:
+        if args.machine_learning_model is not None:
+            print("[-] Sorry, machine-learning-model option is not compatible with USERS mode, is only for PASSWORD mode.")
+            sys.exit(1)
         if args.users.strip() == "":
             print("Error: This argument can not be empty", file=sys.stderr)
             sys.exit(1)

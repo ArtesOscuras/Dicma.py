@@ -31,6 +31,7 @@ import unicodedata
 import urllib.request
 import subprocess
 import multiprocessing
+import tempfile
 
 # General variables
 LIGHT_MODE = False
@@ -343,7 +344,7 @@ def ml_process_pwd(list_, ml_model, number_neighbours):
             sys.exit(1)
 
     if system_os == 'windows':
-        verbose_print('[!] Warning, WINDOWS OS detected. "fasttext" library can not be compiled in windows. We are going to use fasttext precompiled binary.')
+        verbose_print('[!] Warning, WINDOWS OS detected. "fasttext" library can not be compiled in windows. We are going to use fasttext.exe precompiled binary.')
         if os.path.isfile("fasttext.exe") == False:
             verbose_print("[!] fasttext.exe not found in present directory...")
             verbose_print('[!] We need to download an external fasttext.exe from -> https://github.com/sigmeta/fastText-Windows/releases/')
@@ -380,54 +381,67 @@ def ml_process_pwd(list_, ml_model, number_neighbours):
         return words_list
 
         
-def worker_generate(args):
-    word, FULL_MODE, LIGHT_MODE = args
+def worker_generate(word, FULL_MODE, LIGHT_MODE, queue, batch_size=1000):
     try:
-        return '\n'.join(generate_password_list(word, FULL_MODE, LIGHT_MODE))
+        lines = generate_password_list(word, FULL_MODE, LIGHT_MODE)
+        batch = []
+        for line in lines:
+            batch.append(line)
+            if len(batch) >= batch_size:
+                queue.put('\n'.join(batch))
+                batch.clear()
+        # Enviar lo que quede
+        if batch:
+            queue.put('\n'.join(batch))
     except Exception as e:
-        return f"# Error with word '{word}': {e}"
+        queue.put(f"# Error with word '{word}': {e}")
+
+def worker_task(args):
+    word, FULL_MODE, LIGHT_MODE, queue = args
+    worker_generate(word, FULL_MODE, LIGHT_MODE, queue)
 
 def massive_mode(list_, output_file_name):
-    global LIGHT_MODE
-    global FULL_MODE
-    global OUTPUT_FILE_BULEAN
-    global MASSIVE_MODE
+    global LIGHT_MODE, FULL_MODE, OUTPUT_FILE_BULEAN
 
     verbose_print("[!] Massive mode ENABLED")
     VERBOSE = True
-
     if not OUTPUT_FILE_BULEAN:
         output_file_name = "output.txt"
         verbose_print("[!] Output file required for the massive mode. Saving results to -> " + str(output_file_name))
 
-    # Estimate file size
-    output_size_lines = len(list_) * 900000
-    if LIGHT_MODE:
-        output_size_lines = len(list_) * 7700
-    if FULL_MODE:
-        output_size_lines = len(list_) * 8000000
-    avg_line_size_bytes = 16
-    estimated_size_bytes = output_size_lines * avg_line_size_bytes
-    estimated_size_gb = round(estimated_size_bytes / (1024 ** 3), 2)
-    verbose_print("[+] Expected file size -> " + str(estimated_size_gb) + " GB / " + str(output_size_lines) + " Lines (aprox)")
+    cpu_cores = multiprocessing.cpu_count()
+    verbose_print(f"[+] Using {cpu_cores} CPU cores")
 
-    args_list = [(word, FULL_MODE, LIGHT_MODE) for word in list_]
+    manager = multiprocessing.Manager()
+    queue = manager.Queue(maxsize=100)  # un poco menos para que no se atasque
 
-    try:
-        cpu_cores = multiprocessing.cpu_count()
-        verbose_print(f"[+] Using {cpu_cores} CPU cores")
+    pool = multiprocessing.Pool(cpu_cores)
 
-        with multiprocessing.Pool(cpu_cores) as pool:
-            for index, result in enumerate(pool.imap(worker_generate, args_list)):
-                progress = (index + 1) / len(args_list) * 100
-                print(f"\r[+] Progress: {progress:.2f}%", end='', flush=True)
-                with open(output_file_name, 'a', encoding='utf-8') as f:
-                    f.write(result + '\n')
+    args_list = [(word, FULL_MODE, LIGHT_MODE, queue) for word in list_]
 
-    except Exception as e:
-        print(f"\n[-] Error during multiprocessing: {e}", file=sys.stderr)
-    
+    results = [pool.apply_async(worker_task, (args,)) for args in args_list]
 
+    with open(output_file_name, 'w', encoding='utf-8') as f:
+        processed_words = 0
+        total_words = len(list_)
+
+        while processed_words < total_words:
+            try:
+                chunk = queue.get(timeout=5)
+                f.write(chunk + '\n')
+            except Exception:
+                if all(r.ready() for r in results):
+                    while not queue.empty():
+                        f.write(queue.get() + '\n')
+                    processed_words = total_words
+
+            processed_words = sum(1 for r in results if r.ready())
+            progress = processed_words / total_words * 100
+            print(f"\r[+] Progress: {progress:.2f}%", end='', flush=True)
+
+    pool.close()
+    pool.join()
+    print(f"\n[+] Finished. Output saved to {output_file_name}")
 
 def generate_password_list(word, FULL_MODE, LIGHT_MODE):
     global amount_of_sufixs_used

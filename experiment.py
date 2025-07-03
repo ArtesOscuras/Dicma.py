@@ -263,7 +263,8 @@ def find_neighbours_batch_windows(model_path, words, number):
         stdin=subprocess.PIPE,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
-        text=True
+        text=True,
+        encoding='utf-8'
     )
     input_data = "\n".join(words) + "\n"
     stdout_data, stderr_data = process.communicate(input=input_data)

@@ -255,8 +255,8 @@ def find_neighbours(model,word,number):
     words += [text for text in almost_words if valid(text)]
     return words
     
-def find_neighbours_windows(model, word, number): # CAREFULL, IS LOADING THE FULL MODEL FOR EVERY FUCKING WORD... THIS WILL NEED TO BE FIX...
-    command = ["fasttext.exe", "nn", model, str(number)]
+def find_neighbours_batch_windows(model_path, words, number):
+    command = ["fasttext.exe", "nn", model_path, str(number)]
     process = subprocess.Popen(
         command,
         stdin=subprocess.PIPE,
@@ -264,24 +264,49 @@ def find_neighbours_windows(model, word, number): # CAREFULL, IS LOADING THE FUL
         stderr=subprocess.PIPE,
         text=True
     )
-    exit, error = process.communicate(input=word + "\n")
-
-    if error:
-        print(f"Error while processing '{word}': {error}")
+    input_data = "\n".join(words) + "\n"
+    stdout_data, stderr_data = process.communicate(input=input_data)
+    if stderr_data:
+        print(f"[!] Error from fasttext: {stderr_data}")
         return []
+    lines = stdout_data.strip().splitlines()
+    output = {}
+    word_index = 0
+    current_neighbors = []
+    for line in lines:
+        if line.startswith("Query word?"):
+            if current_neighbors and word_index < len(words):
+                word = words[word_index]
+                output[word] = clean_neighbors(current_neighbors)
+                current_neighbors = []
+                word_index += 1
+        else:
+            current_neighbors.append(line)
+    if current_neighbors and word_index < len(words):
+        word = words[word_index]
+        output[word] = clean_neighbors(current_neighbors)
+    unified_set = set()
+    for word, neighbors in output.items():
+        unified_set.add(word)
+        unified_set.update(neighbors)
+    final_list = list(unified_set)
+    return final_list
 
+def clean_neighbors(lines):
     neighbors = []
-    neighbors.append(word)
-    for line in exit.strip().splitlines():
+    for line in lines:
         parts = line.strip().split()
-        if len(parts) >= 1:
-            neighbors.append(parts[0])
-    semi_words = neighbors
-    almost_words = [text for text in semi_words if '.' not in text]
-    def valid(text):
-        return all(not c.isupper() for c in text[1:])
-    words = [text for text in almost_words if valid(text)]
-    return words
+        if len(parts) >= 2:
+            neighbor = parts[0]
+            neighbors.append(neighbor)
+    cleaned = set()
+    for w in neighbors:
+        w = w.rstrip('-')
+        w = w.lower()
+        if '.' in w:
+            continue
+        cleaned.add(w)
+    return list(cleaned)
 
 def ml_process_pwd(list_, ml_model, number_neighbours):
     system_os = system_detection()
@@ -316,7 +341,7 @@ def ml_process_pwd(list_, ml_model, number_neighbours):
             sys.exit(1)
 
     if system_os == 'windows':
-        verbose_print('[!] Warning, this function is problematic in windows because "fasttext" library can not be compiled. We are going to use fasttext precompiled binary.')
+        verbose_print('[!] Warning, WINDOWS OS detected. "fasttext" library can not be compiled in windows. We are going to use fasttext precompiled binary.')
         if os.path.isfile("fasttext.exe") == False:
             verbose_print("[!] fasttext.exe not found in present directory...")
             verbose_print('[!] We need to download an external fasttext.exe from -> https://github.com/sigmeta/fastText-Windows/releases/')
@@ -344,11 +369,8 @@ def ml_process_pwd(list_, ml_model, number_neighbours):
                 sys.exit(1)
 
         words_list = []
-        for word in list_:
-            print("[+] Processing -> "+str(word))
-            neighbors = find_neighbours_windows(ml_model, word, number_neighbours)
-            for neighbor in neighbors:
-                words_list.append(neighbor)
+        verbose_print("[+] Looking for the " + str(number_neighbours) + " nearest neighbours for each word.")
+        words_list = find_neighbours_batch_windows(ml_model, list_, number_neighbours)
         verbose_print("[+] Neighbors found successfully.")
         return words_list
 
@@ -541,7 +563,7 @@ def main():
     parser.add_argument('-d','--dictionary', metavar='file_name', help='Extract patterns from your an specific dictionary.')
     parser.add_argument('-o', '--output', metavar='file_name', help='Dictionary will be stored in this file.')
     parser.add_argument('-ml', '--machine-learning-model', metavar='file_name', help='Use a trained machine learning model to include neighbors of your original words.')
-    parser.add_argument('-n', '--neighbours-number', metavar='integer', help='Ammount of neighbors for each word (20 by Default).')
+    parser.add_argument('-n', '--neighbours-limit', metavar='integer', help='Ammount of neighbors maximum for each word (20 by Default).')
 
     args = parser.parse_args()
     
@@ -599,8 +621,8 @@ def main():
             if detec_if_file_or_not(args.machine_learning_model) == False:
                 print("[-] Your -ml <input> is not even a file...  ¬¬ , set a file here.")
                 sys.exit(1)
-            if args.neighbours_number is not None:
-                NEIGHBORS_AMMOUNT = int(args.neighbours_number)
+            if args.neighbours_limit is not None:
+                NEIGHBORS_AMMOUNT = int(args.neighbours_limit)
             ml_list = ml_process_pwd(input_list, args.machine_learning_model, NEIGHBORS_AMMOUNT)
             process_passwd(ml_list, output_file_name)
             sys.exit(0)

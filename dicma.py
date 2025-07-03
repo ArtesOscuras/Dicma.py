@@ -342,7 +342,7 @@ def ml_process_pwd(list_, ml_model, number_neighbours):
             sys.exit(1)
 
     if system_os == 'windows':
-        verbose_print('[!] Warning, WINDOWS OS detected. "fasttext" library can not be compiled in windows. We are going to use fasttext precompiled binary.')
+        verbose_print('[!] Warning, WINDOWS OS detected. "fasttext" library can not be compiled in windows. We are going to use fasttext.exe precompiled binary.')
         if os.path.isfile("fasttext.exe") == False:
             verbose_print("[!] fasttext.exe not found in present directory...")
             verbose_print('[!] We need to download an external fasttext.exe from -> https://github.com/sigmeta/fastText-Windows/releases/')

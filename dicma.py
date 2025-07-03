@@ -226,7 +226,7 @@ def process_passwd(words_list, output_file_name):
     if len(words_list) >= 2 and FULL_MODE == True:
         massive_mode(words_list, output_file_name)
         sys.exit(0)
-    if len(words_list) >= 20 and LIGHT_MODE == False:
+    if len(words_list) >= 10 and LIGHT_MODE == False:
         massive_mode(words_list, output_file_name)
         sys.exit(0) 
     if len(words_list) >= 100:
@@ -262,7 +262,8 @@ def find_neighbours_batch_windows(model_path, words, number):
         stdin=subprocess.PIPE,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
-        text=True
+        text=True,
+        encoding='utf-8'
     )
     input_data = "\n".join(words) + "\n"
     stdout_data, stderr_data = process.communicate(input=input_data)

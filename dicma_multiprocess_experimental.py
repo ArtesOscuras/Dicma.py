@@ -2,6 +2,8 @@
 
 # This project is from ArtesOscuras github repo.
 
+# NOTE: THIS VERSION IS EXPERIMENTAL, IS FASTER THAN ORIGINAL BUT IT COULD CRASH.
+
 #-----------------------------------------------------
 # INTERNAL CONFIGURATION PARAMETERS FOR PASSWORD MODE:
 # -----------------------

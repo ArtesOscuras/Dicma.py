@@ -30,6 +30,10 @@ from collections import Counter
 import unicodedata
 import urllib.request
 import subprocess
+import multiprocessing
+import tempfile
+import platform
+import ctypes
 
 # General variables
 LIGHT_MODE = False
@@ -101,6 +105,64 @@ def system_detection():
     else:
         return "linux"
         
+def get_total_ram():
+    system = platform.system()
+
+    if system == "Linux":
+        try:
+            with open("/proc/meminfo", "r") as f:
+                for line in f:
+                    if line.startswith("MemTotal:"):
+                        parts = line.split()
+                        ram_kb = int(parts[1])
+                        return round(ram_kb / (1024 ** 2), 2)  # Convert kB to GB
+        except Exception as e:
+            print("Error reading /proc/meminfo:", e)
+
+    elif system == "Windows":
+        try:
+            kernel32 = ctypes.windll.kernel32
+            c_ulonglong = ctypes.c_ulonglong
+
+            class MEMORYSTATUSEX(ctypes.Structure):
+                _fields_ = [
+                    ('dwLength', ctypes.c_ulong),
+                    ('dwMemoryLoad', ctypes.c_ulong),
+                    ('ullTotalPhys', c_ulonglong),
+                    ('ullAvailPhys', c_ulonglong),
+                    ('ullTotalPageFile', c_ulonglong),
+                    ('ullAvailPageFile', c_ulonglong),
+                    ('ullTotalVirtual', c_ulonglong),
+                    ('ullAvailVirtual', c_ulonglong),
+                    ('sullAvailExtendedVirtual', c_ulonglong),
+                ]
+
+            memory = MEMORYSTATUSEX()
+            memory.dwLength = ctypes.sizeof(MEMORYSTATUSEX)
+            kernel32.GlobalMemoryStatusEx(ctypes.byref(memory))
+            return round(memory.ullTotalPhys / (1024 ** 3), 2)  # Convert bytes to GB
+        except Exception as e:
+            print("Error using ctypes on Windows:", e)
+
+    elif system == "Darwin":  # macOS
+        try:
+            result = subprocess.run(
+                ["sysctl", "hw.memsize"],
+                capture_output=True, text=True
+            )
+            output = result.stdout
+            if "hw.memsize:" in output:
+                ram_bytes = int(output.split(":")[1].strip())
+                return round(ram_bytes / (1024 ** 3), 2)  # Convert bytes to GB
+        except Exception as e:
+            print("Error running sysctl on macOS:", e)
+
+    else:
+        print("Unsupported operating system:", system)
+
+    return None
+    
+    
 def is_a_valid_file(file_path, blocksize=512):
     try:
         with open(file_path, 'rb') as file_:
@@ -195,7 +257,7 @@ def process_file_user(file_name, output_file_name):
             for line_ in file_:
                 line_ = line_.strip()
                 if not line_:
-                    continue  # Omitir líneas vacías
+                    continue 
                 combinations = generate_usernames(line_)
                 for element in combinations:
                     complet_list.append(element)
@@ -236,12 +298,12 @@ def process_passwd(words_list, output_file_name):
     final_list = []
     if OUTPUT_FILE_BULEAN == False:
         for word in words_list:
-            final_list += generate_password_list(word) 
+            final_list += generate_password_list(word, FULL_MODE, LIGHT_MODE) 
         for element in final_list:
             print(element)
     else:
         for word in words_list:
-            final_list += generate_password_list(word)
+            final_list += generate_password_list(word, FULL_MODE, LIGHT_MODE)
         save_list_to_file(final_list, output_file_name)
         
 def find_neighbours(model,word,number):
@@ -333,7 +395,7 @@ def ml_process_pwd(list_, ml_model, number_neighbours):
                 neighbors = find_neighbours(model, word, number_neighbours)
                 for neighbor in neighbors:
                     words_list.append(neighbor)
-            verbose_print("[+] Neighbors found successfully.")
+            verbose_print("[+] Neighbors found successfully, " + str(len(words_list)) + " Words in total.")
             return words_list
 
         except ImportError:
@@ -360,64 +422,108 @@ def ml_process_pwd(list_, ml_model, number_neighbours):
                     print("[+] Binary downloaded successfully")
                 except urllib.error.HTTPError as e:
                     print(f"[-] Error HTTP -> {e.code} - {e.reason}")
+                    sys.exit(1)
                 except urllib.error.URLError as e:
                     print(f"[-] Connection problem or file not available -> {e.reason}")
+                    sys.exit(1)
                 except Exception as e:
                     print(f"[-] Unexpected error -> {e}")
+                    sys.exit(1)
 
             else:
                 print("[-] Sorry but without this binary we won't be able to use fasttext model in Windows. Try to use dicma in linux, macos, or get this binary.")
                 sys.exit(1)
 
         words_list = []
-        verbose_print("[+] Looking for the " + str(number_neighbours) + " nearest neighbours for each word.")
+        verbose_print("[+] Looking up to " + str(number_neighbours) + " nearest neighbours for each word.")
         words_list = find_neighbours_batch_windows(ml_model, list_, number_neighbours)
         verbose_print("[+] Neighbors found successfully.")
         return words_list
 
         
+def worker_generate(word, FULL_MODE, LIGHT_MODE, queue, batch_size=1000):
+    try:
+        lines = generate_password_list(word, FULL_MODE, LIGHT_MODE)
+        batch = []
+        for line in lines:
+            batch.append(line)
+            if len(batch) >= batch_size:
+                queue.put('\n'.join(batch))
+                batch.clear()
+        # Enviar lo que quede
+        if batch:
+            queue.put('\n'.join(batch))
+    except Exception as e:
+        queue.put(f"# Error with word '{word}': {e}")
+
+def worker_task(args):
+    word, FULL_MODE, LIGHT_MODE, queue = args
+    worker_generate(word, FULL_MODE, LIGHT_MODE, queue)
+
 def massive_mode(list_, output_file_name):
-    global LIGHT_MODE
-    global FULL_MODE
-    global OUTPUT_FILE_BULEAN
-    global MASSIVE_MODE
-    
+    global LIGHT_MODE, FULL_MODE, OUTPUT_FILE_BULEAN
+
     verbose_print("[!] Massive mode ENABLED")
     VERBOSE = True
-    if OUTPUT_FILE_BULEAN == False:
+    if not OUTPUT_FILE_BULEAN:
         output_file_name = "output.txt"
         verbose_print("[!] Output file required for the massive mode. Saving results to -> " + str(output_file_name))
-    
-    # Estimated file size
+
+    # CPU and Ram calculations
+    cpu_cores = multiprocessing.cpu_count()
+    if FULL_MODE == True:
+        ram = get_total_ram()
+        verbose_print(f"[i] {ram} GB RAM detected.")
+        if ram <= 15:
+            verbose_print("[!] WARNING! Full mode + multicore could saturate RAM, crash, and go slower than expected. \n[!] We will use just few cores... Go for a coffe.")
+            cpu_cores = cpu_cores // 4
+            if cpu_cores == 0:
+                cpu_cores = 1
+    verbose_print(f"[+] Using {cpu_cores} CPU cores")
+
+    # Calculating output
     output_size_lines = len(list_) * 900000
     if LIGHT_MODE == True:
         output_size_lines = len(list_) * 7700
     if FULL_MODE == True:
-        output_size_lines = len(list_) * 8000000
+        output_size_lines = len(list_) * 5000000
     avg_line_size_bytes = 16
     estimated_size_bytes = output_size_lines * avg_line_size_bytes
     estimated_size_gb =  round(estimated_size_bytes / (1024 ** 3), 2)
-    verbose_print("[+] Expected file size -> " + str(estimated_size_gb) + " GB / " + str(output_size_lines) + " Lines (aprox)")
-    
-    try:
-        with open(output_file_name, 'w', encoding='utf-8') as f:
-            for index, word in enumerate(list_):
-                progress = (index + 1) / len(list_) * 100
-                print(f"\r[+] Progress: {progress:.2f}%", end='', flush=True)
-                temp_list = generate_password_list(word)
-                f.write('\n'.join(temp_list) + '\n')
+    verbose_print("[i] Expected file size -> " + str(estimated_size_gb) + " GB / " + str(output_size_lines) + " Lines (aprox.)")
+        
+    # Preparing Multiprocess
+    manager = multiprocessing.Manager()
+    queue = manager.Queue(maxsize=1500)
+    pool = multiprocessing.Pool(cpu_cores)
+    args_list = [(word, FULL_MODE, LIGHT_MODE, queue) for word in list_]
+    results = [pool.apply_async(worker_task, (args,)) for args in args_list]
 
-    except Exception as e:
-        print(f"Error saving dictionary: {e}", file=sys.stderr)
+    with open(output_file_name, 'w', encoding='utf-8') as f:
+        processed_words = 0
+        total_words = len(list_)
 
-    
+        while processed_words < total_words:
+            try:
+                chunk = queue.get(timeout=5)
+                f.write(chunk + '\n')
+            except Exception:
+                if all(r.ready() for r in results):
+                    while not queue.empty():
+                        f.write(queue.get() + '\n')
+                    processed_words = total_words
 
+            processed_words = sum(1 for r in results if r.ready())
+            progress = processed_words / total_words * 100
+            print(f"\r[+] Progress: {progress:.2f}%", end='', flush=True)
 
-def generate_password_list(word):
+    pool.close()
+    pool.join()
+    print(f"\n[+] Finished. Output saved to {output_file_name}")
+
+def generate_password_list(word, FULL_MODE, LIGHT_MODE):
     global amount_of_sufixs_used
     global amount_of_prefixs_used
-    global FULL_MODE
-    global LIGHT_MODE
     
     if LIGHT_MODE == True:
         amount_of_sufixs_used = amount_of_sufixs_used_light_mode
@@ -557,6 +663,8 @@ def main():
     group = parser.add_mutually_exclusive_group(required=True)
     group.add_argument('-u', '--users', help='File with usernames, or usernames list: "jony random,fahim jordan,..."')
     group.add_argument('-p', '--password', help='file with words to "passworize", or list like: "ibis,megacorp,..."')
+    group.add_argument('-jn', '--just-neighbours', help='Use only the fasttext module to see nearest neighbours from words')
+
 
     parser.add_argument('-l', '--light', action='store_true', help='Light mode, for small list (passwd mode).')
     parser.add_argument('-f', '--full', action='store_true', help='Full mode. Warning, the output could be very heavy (passwd mode).')
@@ -618,7 +726,7 @@ def main():
             sys.exit(1)
         input_list = normalize_list(args.password)
         
-        if args.machine_learning_model is not None:                  # Section under development
+        if args.machine_learning_model is not None:      
             if detec_if_file_or_not(args.machine_learning_model) == False:
                 print("[-] Your -ml <input> is not even a file...  ¬¬ , set a file here.")
                 sys.exit(1)
@@ -631,6 +739,27 @@ def main():
         verbose_print("[+] PASSWORD mode selected.")
         process_passwd(input_list, output_file_name)
         sys.exit(0)
+    
+    if args.just_neighbours is not None:
+        if args.machine_learning_model is None:
+            print("[-] Sorry, you need to provide the Machine learning model (use -ml flag)")
+            sys.exit(1)
+        if args.neighbours_limit is None:
+            print("[-] Sorry, you need to provide how many neighbours you are looking for (use -n flag)")
+        
+        input_list = normalize_list(args.just_neighbours)
+        if args.machine_learning_model is not None:         
+            if detec_if_file_or_not(args.machine_learning_model) == False:
+                print("[-] Your -ml <input> is not even a file...  ¬¬ , set a file here.")
+                sys.exit(1)
+            if args.neighbours_limit is not None:
+                NEIGHBORS_AMMOUNT = int(args.neighbours_limit)
+                
+            # Section under development
+            ml_list = ml_process_pwd(input_list, args.machine_learning_model, NEIGHBORS_AMMOUNT)
+            print(ml_list)
+            sys.exit(0)
+            
 
 
 if __name__ == "__main__":

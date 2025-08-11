@@ -440,21 +440,18 @@ def ml_process_pwd(list_, ml_model, number_neighbours):
         verbose_print("[+] Neighbors found successfully.")
         return words_list
 
-        
-def worker_generate(word, FULL_MODE, LIGHT_MODE, queue, batch_size=1000):
+def worker_generate(word, FULL_MODE, LIGHT_MODE, queue, batch_size=500):
     try:
-        lines = generate_password_list(word, FULL_MODE, LIGHT_MODE)
         batch = []
-        for line in lines:
+        for line in generate_password_list(word, FULL_MODE, LIGHT_MODE):
             batch.append(line)
             if len(batch) >= batch_size:
                 queue.put('\n'.join(batch))
                 batch.clear()
-        # Enviar lo que quede
         if batch:
             queue.put('\n'.join(batch))
     except Exception as e:
-        queue.put(f"# Error with word '{word}': {e}")
+        queue.put(f"# Error with word '{word}': {e}")  
 
 def worker_task(args):
     word, FULL_MODE, LIGHT_MODE, queue = args

@@ -471,6 +471,10 @@ def massive_mode(list_, output_file_name):
     if FULL_MODE == True:
         ram = get_total_ram()
         verbose_print(f"[i] {ram} GB RAM detected.")
+        if ram <= 31:
+            cpu_cores = cpu_cores // 2
+            if cpu_cores == 0:
+                cpu_cores = 1
         if ram <= 15:
             verbose_print("[!] WARNING! Full mode + multicore could saturate RAM, crash, and go slower than expected. \n[!] We will use just few cores... Go for a coffe.")
             cpu_cores = cpu_cores // 4

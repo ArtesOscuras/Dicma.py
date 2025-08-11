@@ -440,7 +440,7 @@ def ml_process_pwd(list_, ml_model, number_neighbours):
         verbose_print("[+] Neighbors found successfully.")
         return words_list
 
-def worker_generate(word, FULL_MODE, LIGHT_MODE, queue, batch_size=500):
+def worker_generate(word, FULL_MODE, LIGHT_MODE, queue, batch_size=200):
     try:
         batch = []
         for line in generate_password_list(word, FULL_MODE, LIGHT_MODE):
@@ -491,7 +491,7 @@ def massive_mode(list_, output_file_name):
         
     # Preparing Multiprocess
     manager = multiprocessing.Manager()
-    queue = manager.Queue(maxsize=1500)
+    queue = manager.Queue(maxsize=500)
     pool = multiprocessing.Pool(cpu_cores)
     args_list = [(word, FULL_MODE, LIGHT_MODE, queue) for word in list_]
     results = [pool.apply_async(worker_task, (args,)) for args in args_list]

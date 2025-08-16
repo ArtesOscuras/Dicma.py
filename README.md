@@ -107,6 +107,8 @@ In massive mode, an output file is required. If you don’t specify one with the
 
 ### MACHINE LEARNING mode:
 
+  <mark>WARNING!! 11GB ram required for this option.</mark>
+
 Only available for password mode. This mode will allow you to use a machine learning model to find the nearest possible words to the actual input words. For example, if you use "queen" as input, the nearest neighbors will be "queens", "princess", "women", etc... This will help you to find other words to passworize, but will increase your final dictionary a lot (Light mode recommended). As more details you know from the user, more keywords you will find when trying to map their mind. With this methode you can create realistic wordlists to crack the password of an specific user.
 
 <br>

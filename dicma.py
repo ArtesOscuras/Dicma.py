@@ -379,7 +379,7 @@ def ml_process_pwd(list_, ml_model, number_neighbours):
             try:
                 model = fasttext.load_model(ml_model)
                 verbose_print("[+] Fasttext module loaded successfully.")
-                if hasattr(ml_model, 'predict') and callable(ml_model.predict):
+                if hasattr(model, 'predict') and callable(model.predict):
                     verbose_print("[+] Model loaded validated.")
             except Exception:
                 print("[-] Sorry but doesn't looks like your input file is a valid ML model.")
@@ -733,6 +733,11 @@ def main():
                 sys.exit(1)
             if args.neighbours_limit is not None:
                 NEIGHBORS_AMMOUNT = int(args.neighbours_limit)
+            if get_total_ram() < 11:
+                print("[-] Insufficient RAM for ML mode. Detected -> "+str(get_total_ram())+"GB" )
+                print("[-] You need 11 GB RAM available at least to run fasttext models.")
+                sys.exit(1)
+                 
             ml_list = ml_process_pwd(input_list, args.machine_learning_model, NEIGHBORS_AMMOUNT)
             process_passwd(ml_list, output_file_name)
             sys.exit(0)

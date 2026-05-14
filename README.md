@@ -37,6 +37,7 @@ This mode allows you to input a list of usernames and surnames (e.g., from an Ac
 
 Input can be a file (one name per line) or a string like "john kenedy, albert random, patrick harper, ...".
 The output can be printed to the terminal or saved to a file using the `-o` flag.
+On actual version up to 3 word names are supported.
 
 Example: The user "John Kenedy" will be processed like:
 
@@ -50,7 +51,6 @@ j_kenedy
 john-k
 ...
 ```
-
 
 ### PASSWORD mode:
 

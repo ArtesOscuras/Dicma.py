@@ -1,10 +1,8 @@
-# DICMA V2 — The Dictionary Maker
+# DICMA — The Dictionary Maker
 
 Dicma creates massive wordlists based on specific words for password cracking.
 
 It includes extracted patterns from the rockyou.txt dictionary to "passworize" any word or concept. Users often create passwords based on specific words and modify them with symbols, numbers, and capitalization — Dicma generates all those combinations.
-
-Dicma V2 removes deprecated Fasttext machine learning model and use LLM models to generate words related. You can use it with local llm (using ollama for example), or you can use your llm suscription to any platform api compatible with openai library. My personal recomendation is deepseek-v4-flash from https://www.deepseek.com/en/.
 
 ---
 
@@ -143,6 +141,65 @@ python3 dicma.py -jn "starwars,finalfantasy" -n1 20
 
 ---
 
+### RULES mode (`-r`)
+
+Generates a **Hashcat rule file** that applies the same case, leet, suffix, and prefix transformations directly to a wordlist — without generating massive dictionaries on disk.
+
+```
+# Default (~2.25M rules, 80 MB)
+python3 dicma.py -r -o dicma.rules
+
+# Light mode (~5K rules, 0.2 MB)
+python3 dicma.py -r -l -o light.rules
+
+# Full mode (~55M rules, 1.3 GB — for desktop GPUs with 8+ GB VRAM)
+python3 dicma.py -r -f -o full.rules
+
+# With custom dictionary for pattern extraction
+python3 dicma.py -r -d rockyou.txt -o custom.rules
+```
+
+**Each rule combines case + leet + suffix/prefix in a single line.** This matches the same transformations that `-p` mode produces, but applied on-the-fly by Hashcat's GPU engine:
+
+```
+$1$2$3                    → append "123"
+c sa@ ss$ ^8^0 $9$4        → capitalize + a→@ + s→$ + prepend "08" + append "94"
+l so0 ^*^* $1$1$5          → lowercase + o→0 + prepend "**" + append "115"
+u sa@ so0 se3 ss$ □3□3 □1□5□9 → uppercase + 4 leet subs + prepend "33" + append "159"
+```
+
+**Usage with Hashcat:**
+
+```bash
+# Generate rules
+python3 dicma.py -r -o dicma.rules
+
+# Crack with a wordlist
+hashcat -a 0 -m 0 hash.txt wordlist.txt -r dicma.rules
+```
+
+**Rule count vs dictionary size (per word):**
+
+| Mode | Rules | File size | Equivalent dicma `-p` |
+|---|---|---|---|
+| `-r -l` | 5K | 0.2 MB | ~7.7K lines/word |
+| `-r` | 2.25M | 80 MB | ~278K lines/word |
+| `-r -f` | 55M | 1.3 GB | ~5M lines/word |
+
+**Pattern coverage (`-r` default):**
+
+| Pattern | Used | Available |
+|---|---|---|
+| Suffixes (simple) | 800 (74%) | 1,080 |
+| Prefixes (simple) | 50 (7%) | 659 |
+| Numeric | 200 (38%) | 515 |
+| Symbols | 50 (50%) | 100 |
+| Combo pref×suf | 63×350 | 659×1,080 |
+
+Full mode (`-r -f`) covers 100% of all patterns. Requires a GPU with enough VRAM (e.g., RTX 3070 with 8 GB or cloud GPU).
+
+---
+
 ## Full help
 
 ```
@@ -158,8 +215,9 @@ usage: dicma.py [-h] (-u USERS | -p PASSWORD | -jn JUST_NEIGHBOURS)
 | `-u` | Users mode: generate username combinations |
 | `-p` | Password mode: generate password variations |
 | `-jn` | Just neighbours: find related words (LLM) |
-| `-l` | Light mode (users: IT patterns only, passwords: ~7K lines/word) |
-| `-f` | Full mode (passwords: ~5M lines/word) |
+| `-r` | Rules mode: generate Hashcat rules |
+| `-l` | Light mode (users: IT patterns only, passwords/rules: fewer outputs) |
+| `-f` | Full mode (passwords: ~5M lines/word, rules: 55M rules) |
 | `-nv` | No verbose: only output the dictionary |
 | `-d` | Custom dictionary for pattern extraction |
 | `-o` | Output file (otherwise prints to stdout) |

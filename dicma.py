@@ -1,0 +1,1160 @@
+#!/usr/bin/env python3
+
+# This project is from ArtesOscuras github repo.
+
+#-----------------------------------------------------
+# INTERNAL CONFIGURATION PARAMETERS FOR PASSWORD MODE:
+# -----------------------
+#
+# Light mode parameters:
+amount_of_sufixs_used_light_mode = 200
+amount_of_prefixs_used_light_mode = 50
+
+# Default mode parameters:
+amount_of_sufixs_used = 1000
+amount_of_prefixs_used = 200
+
+# Extended mode parameters:
+amount_of_numericpat_used = 516
+amount_of_symbolpat_used = 100
+#-----------------------------------------------------
+
+
+# Libraries to import
+import sys
+import os
+import json
+import argparse
+from itertools import product
+import re
+from collections import Counter
+import unicodedata
+import subprocess
+import multiprocessing
+import platform
+import ctypes
+
+from openai import OpenAI
+
+# General variables
+LIGHT_MODE = False
+FULL_MODE = False
+VERBOSE = True
+OUTPUT_FILE_BULEAN = False
+MASSIVE_MODE = False
+
+# LLM neighbour expansion
+
+# internal stored patterns: (I took it from rockyou.txt)
+BASIC_SUFIXS = ['1', '2', '123', '12', '3', '7', '13', '5', '4', '11', '!', '07', '23', '22', '01', '21', '8', '14', '10', '08', '6', '06', '9', '15', '16', '69', '18', '17', '24', '05', '.', '09', '88', '19', '25', '20', '03', '0', '04', '27', '89', '02', '99', '26', '101', '77', '1234', '28', '33', '00', '2007', '92', '87', '93', '2006', '*', '29', '94', '90', '2008', '91', '95', '86', '55', '30', '666', '143', '31', '96', '85', '44', '32', '007', '34', '4ever', '84', '45', '#1', '2005', '78', '98', '66', '83', '82', '97', '1994', '79', '100', '1992', '1993', '81', '4life', '4eva', '12345', '1995', '1991', '777', '1990', '420', '76', '56', '111', '1989', '2000', '1987', '321', '2009', '67', '80', '75', '2004', '1996', '42', '1988', '35', '74', '72', '1986', '1985', '001', '36', '73', '54', '2003', '456', '50', '!!', '333', '68', '@', '1984', '64', '37', '65', '40', '71', '2002', '4u', '123456', '43', '555', '911', '1997', '52', '?', '999', '1983', '1982', '47', '$', '57', '2001', '41', '@hotmail.com', '1980', '38', '4me', '1981', '63', '46', '70', '2010', '58', '48', '222', '51', '62', '1979', '121', '619', '53', '789', '59', '39', '112', '1998', '1978', '000', '888', '49', '**', '247', '234', '61', '60', '..', '213', '1977', '1212', '200', '159', '1999', '@yahoo.com', '1976', '182', '786', '1!', '.com', '<3', '1975', ')', '125', '187', '214', '2k7', '147', '...', '1974', '.1', '102', '1973', '!!!', '4e', '123456789', '411', '212', '6969', '1010', '305', '124', '012', '1972', '345', '360', '1969', '009', '316', '1970', '313', '4lyf', '711', '210', '808', '122', '1313', '987', '311', '120', '#', '1971', '444', '369', '1000', '008', '500', '2012', '323', '2011', '211', '1111', '246', '215', ',', '300', '135', '567', '117', '003', '103', '113', '1968', '1122', '225', '713', '132', '209', '510', '002', '520', '1221', '310', '223', '105', '~', '127', '100pre', '110', '1967', '818', '011', '1213', '1012', '202', '312', '128', '109', '+', '108', '126', '098', '1966', '2k6', '1965', '909', '1.', '118', '1020', '3000', '115', '678', '714', '415', '1964', '013', '1123', '107', '718', '129', ']', '831', '010', '2121', '4l', '005', '145', '314', '224', '104', '2525', '131', ';', '221', '626', '1314', '2020', '357', '4lyfe', '114', '318', '1210', '1223', '916', '1023', '1230', '106', '900', '216', '006', '116', '1011', '2323', '201', '2468', '4321', '119', '504', '3r', '1963', '1214', '217', '315', '2u', '512', '1224', '412', '0123', '1231', '1022', '1121', '1013', '1001', '258', '890', '134', '150', '220', '421', '1021', '1220', '1024', '1218', '1215', '317', '199', '521', '1216', '***', '303', '515', '004', '707', '$$', '206', '1014', '219', '1025', '1211', '1962', '218', '320', '1960', '1217', '413', '4444', '727', '1205', '1225', '`', '912', '812', '410', '0n', '813', '227', '2k', '014', '100%', '1206', '231', '1228', '505', '1029', '7777', '0000', '1017', '1015', '1107', '133', '1112', '325', '130', '513', '4LIFE', '324', '@1', '1016', '511', '1018', '423', '180', '1026', '021', '1125', '1031', '1028', "'", '1203', '1204', '1104', '023', '2k8', '612', '400', '721', '805', '1105', '2112', '1124', '1120', '4you', '525', '1207', '228', '205', '913', '2222', '2013', '#2', '1103', '1202', '1961', '1027', '617', '1106', '1019', '1127', '717', '1227', '156', '250', '4evr', '1208', '712', '600', '1219', '254', '1414', '017', '226', '408', '925', '723', '322', '1959', '137', '817', '319', '2424', '151', '809', '910', '232', '/', '203', '1229', '414', '326', '327', '616', '1515', '1226', '1030', '516', '1*', '1201', '2x', '365', '144', '1129', '123!', '623', '1209', '523', '611', '1126', '1005', '9999', '1128', '=', '1004', '!1', '1102', '710', '1002', '654', '1101', '613', '419', '1108', '422', '921', '198', '1130', '425', '123.', '923', '915', '169', '615', '015', '416', '#3', '951', '610', '141', '190', '816', '328', '1958', '811', '720', '016', '828', '426', '702', '919', '191', '1a', '522', '1007', '501', '018', '823', '189', '715', '8888', '918', '54321', '716', '256', '1003', '424', '1234567', '963', '138', '@123', '207', '427', '2345', '787', '5150', '852', '242', '914', '621', '331', '4EVER', '741', '637', '614', '.123', '562', '252', '920', '301', '1109', '1222', '153', '330', '1e', '417', '1006', '530', '800', '0506', '1957', '*1', '245', '1956', '517', '622', '155', '235', '753', '514', '329', ':)', '1113', '0101', '157', '821', '722', '810', '5678', '429', '2526', '724', '527', '024', '069', '524', '418', '0607', '208', '922', '624', '142', '168', '152', '2me', '0808', '1008', '929', '561', '2b', '700', '1717', '928', '815', '233', '518', '136', '177', '0708', '625', '0102', '725', '901', '022', '822', '917', '0909', '519', '334', '526', '248', '183', '731', '927', '531', '1117', '167', '602', '1114', '1818', '814', '5555', '529', '019', '620', '1n', '1616', '1955', '824', '618', '%', '1009', '192', '719', '503', '924', '1919', '229', '1st', '@aol.com', '926', "'s", '820', '430', '0707', '528', '188', '181', '4EVA', '989', '432', '1412', '204', '404', '1110', '0406', '304', '428', '5000', '0405', '825', '0809', '3s', '??', '628', '0204', '281', '2212', '3d', '0205', '197', '0202', '1115', '1954', '726', '728', '237', '0505', '757', '1116', '302', '140', '954', '559', '601', '747', '1516', '405', '730', '0305', '243', '146', '154', '509', '729', '627', '0306', '1415', '"', '350', '629', '1324', '696', '0507', '0711', '0214', '253', '269', '407', '0407', '0304', '306', '4U', '650', '2310', '171', '236', '2529', '630', '1905', '239', '2528', '450', '1s', '2527', '139', '025', '195', '&', '0303', '123*', '1118', '454', '0606', '2530', '0203', '876', '930', '178', "\\\\'", '2210', '0107', '0404', '027', '0408', '1907', '819', '0812', '409', '158', '908', '543', '401', '230', '0210', '1312', '0308', '307', '1love', '240', '0412', '1369', '1310', '1953', '826', '829', '2!', '165', '2105', '161', '606', '1234567890', '160', '148', '904', '0311', '830', '0307', '0103', '2211', '2014', '193', '.12', '0110', '308', '827', '1307', '0420', '0206', '1119', '0207', '@@', '0911', '0212', '149', '990', '0105', '2123', '.2', '255', '309', '(L)', '241', '3333', '801', '0912', '185', '1432', '0104', '6666', '0987', '175', '163', '502', '1950', '671', '0106', '0208', '765', '251', '337', '1908', '170', '445', '166', '028', '173', '257', '3y', '031', '2107', '1888', '2524', '123123', '196', '&me', '1402', '0608', '2311', '1331', '!@#', '1903', '1305', '0312', '1235', '1@', '956', '174', '2312', '0509', '275', '2523', '0508', '172', '0512', '1311', '1306', '1952', '1200', '90210', '1512', '1408', '1233', '026', '1411', '2727', '1920', '978', '184', '5683', '1690', '0810', '2510', '244', '0709', '565', '2410', '667', '238', '090', '0108', '164', '12345678', '55555', '4u2', '0411', '1912', '#7', '3n', '2412', '2205', '1812', '1904', '0811', '2103', '402', '0612', '0309', '973', '0907', '336', '14344', '1410', '123321', '1906', '1323', '289', '903', '\\\\', '0211', '0209', '1405', '2106', '2828', '0712', '803', '2580', '2626', '267', '0321', '1308', '1718', '>', '2207', '1304', '262', '4ev', '077', '179', '343', '2531', '2110', '3030', '1508', '1407', '12!', '2203', '162', '0x', '585', '0906', '176', '1821', '1606', '2303']
+BASIC_PREFIXS = ['1', '2', '4', '123', '3', '*', '12', '7', '5', '8', '6', '13', '11', '143', '9', '19', '@', '(', '10', '14', '0', '22', '23', '21', '$', '!', '#1', '20', '15', '24', '18', '17', '16', '1234', '69', '.', '25', '01', '27', 'i', '07', '26', '**', '28', '06', '29', '08', '30', '~', '00', '05', '123456', '88', '99', '12345', '02', '03', '100', '04', '31', '09', '[', '666', '33', '77', '#', 'sk8', '50', 'ms.', 'mr.', '123456789', '1994', 'i<3', '100%', 'mz.', '<', '89', 'l0', '44', '1992', '1993', '420', '32', '1995', '55', '2007', '101', '34', '321', '1991', '007', '92', ',', 'm1', '2006', '87', '95', '1989', '"', '<3', '1996', '1990', '98', 'no1', '93', '1987', '777', 'm0', '94', 'c0', '90', '66', '2008', '45', ';', 'r0', '91', '96', 'il0', '86', '1988', 'my1', 'ih8', '78', '97', 'my', 'h0', '..', '+', '!!', '111', 'p0', 'l1', 'j0', '56', 'b1', 'm3', '85', '1986', '1985', '52', 'd3', '35', '42', 'k1', '/', 's3', '2005', '84', '40', '79', '`', '82', '619', '***', 's0', '54', 'p1', 'b3', '76', 'te', '36', '74', '67', 'a1', 'g0', 'hi5', '=', '83', 'd0', '1997', '911', '333', '1984', 'b0', '49', 's1', '456', 'd1', '68', '555', 'm@', '80', '72', '43', 'j.', '?', '$$', '...', 'j3', '789', 'h3', '999', '187', '37', '1983', '75', '57', 'n0', '41']
+NUMERIC_PATTERNS = ['1', '2', '4', '3', '123', '7', '12', '5', '0', '8', '13', '6', '9', '11', '23', '22', '10', '14', '07', '21', '01', '15', '08', '06', '16', '18', '69', '17', '24', '05', '19', '09', '20', '25', '88', '03', '00', '27', '04', '02', '33', '89', '26', '99', '1234', '28', '77', '101', '92', '2007', '93', '87', '29', '94', '2006', '143', '90', '91', '30', '95', '2008', '55', '31', '100', '86', '666', '34', '44', '32', '96', '85', '45', '007', '84', '98', '1994', '78', '66', '2005', '1992', '1993', '83', '82', '12345', '97', '1991', '1995', '79', '1990', '81', '1989', '56', '777', '1987', '76', '420', '321', '111', '35', '67', '1996', '80', '2000', '1988', '42', '75', '123456', '50', '2009', '74', '2004', '1986', '72', '54', '36', '456', '1985', '73', '43', '1984', '64', '2003', '68', '37', '40', '333', '001', '52', '65', '47', '41', '71', '1997', '57', '1983', '555', '2002', '999', '1982', '911', '38', '1980', '2001', '46', '63', '70', '1981', '48', '51', '53', '58', '789', '62', '39', '2010', '59', '619', '49', '1979', '222', '121', '000', '1998', '112', '1978', '123456789', '60', '61', '888', '234', '159', '1212', '247', '200', '1977', '213', '786', '1999', '125', '182', '1976', '187', '1975', '147', '214', '1974', '1973', '102', '305', '1010', '6969', '124', '1972', '212', '360', '987', '1000', '411', '345', '1969', '012', '808', '313', '311', '210', '1313', '1970', '369', '500', '120', '300', '316', '711', '122', '1971', '009', '1111', '444', '323', '520', '135', '2012', '246', '211', '2011', '1122', '567', '215', '103', '008', '113', '1968', '117', '225', '510', '310', '209', '1221', '110', '132', '2468', '713', '105', '003', '127', '1213', '1967', '312', '002', '223', '1012', '109', '128', '011', '818', '1966', '108', '126', '098', '202', '118', '2525', '1020', '1123', '104', '831', '1965', '115', '357', '010', '2121', '107', '714', '1314', '145', '909', '415', '900', '129', '678', '314', '224', '1964', '318', '2020', '1210', '114', '131', '2323', '718', '3000', '504', '013', '106', '4321', '1223', '1230', '221', '626', '1023', '201', '116', '005', '1011', '150', '916', '216', '512', '119', '0123', '1214', '515', '006', '412', '1963', '1224', '315', '258', '0000', '134', '217', '220', '812', '1121', '199', '890', '1001', '1231', '1024', '521', '1021', '400', '1022', '1013', '4444', '303', '1215', '1220', '421', '250', '1234567', '1216', '206', '320', '1218', '317', '707', '325', '218', '1025', '1962', '7777', '413', '1211', '1014', '219', '410', '133', '1225', '130', '600', '1029', '1205', '1960', '813', '1217', '004', '1206', '1015', '231', '1228', '1112', '912', '227', '180', '1107', '505', '654', '727', '014', '1017', '324', '1120', '1204', '1031', '513', '2222', '1016', '423', '1028', '2112', '1026', '805', '205', '1203', '156', '1018', '963', '1105', '1125', '1414', '228', '511', '1124', '021', '408', '612', '1104', '525', '2424', '1208', '232', '254', '151', '1202', '1027', '809', '319', '1103', '144', '1207', '1515', '1106', '1127', '322', '721', '913', '203', '414', '226', '54321', '137', '023', '2013', '1005', '1019', '800', '1219', '1227', '910', '1961', '326', '717', '925', '617', '951', '1229', '723', '1030', '611', '1129', '1209', '700', '817', '1959', '1226', '327', '712', '365', '1004', '710', '616', '017', '9999', '1201', '1102', '5150', '1128', '852', '198', '425', '191', '1002', '523', '623', '426', '141', '350', '1101', '516', '256', '753', '1126', '422', '419', '8888', '741', '155', '1108', '1130', '169', '787', '190', '1234567890', '501', '252', '242', '613', '915', '610', '2014', '2015', '2016', '2017', '2018', '2019', '2021', '2021', '2023', '2024', '2025', '2026', '2027', '2028', '2029', '2030']
+SYMBOLIC_PATTERNS = ['.', '-', '!', '@', '*', '/', '#', '&', ',', '$', '+', '=', '?', '(', ')', '**', '!!', ';', '<', '..', "'", ']', '%', '"', '~', '...', '[', '`', '="', "\\\\'", ':', '!!!', '$$', '***', '^', '--', '@@', '//', '>', '++', '??', '!@', '\\\\', ':)', 'ื', '://', '!@#', '##', "\\\\\\\\\\\\'", '.,', '{', '\\\\\\\\', ',.', '}', '$$$', '><', ',,', '()', 'ั', '้', '/*', '^^', 'ุ', '@#', 'ึ', '+-', '&&', '???', '@@@', '*/', 'ิ', '|', ';;', 'ี', '****', '==', '@!', '....', '!*', '[]', ',./', '---', '=]', '/*-', '@$', '=)', '!!!!', '.-', '#!', '~~', ',]', '´', '!@#$', '-=', '*-', ')(', '+++', '))', '?!', '=-']
+
+
+def print_banner():
+    ascii_art = """                                                                      
+
+                                 .-:                                  
+                               -*%%%#+.                               
+                             =#%%%%%%%%+.                             
+                           .*%%%%%%%%%%%#-                            
+                          :#%%%%%%%%%%%%%#=                           
+                         :#*%%%#=:..=*%%%*#=                          
+                         ##%%+:       .=#@#%:                         
+                        =%%*.           .=%%#                         
+                        #%=               :#%:                        
+                       .@= .              .:%=                        
+                        #.:-             :- *:                        
+                       ...:%=           :%+ :.   -                    
+                      :%+. +%+         -%#: -#: *:                    
+                    ..::--:..=+:     .++:.:+=.:#= =                   
+                   .-=+++++=-::::   .:.  .. .+#- =-                   
+                  -+=-:...::-=+++=:.     .-*#+  *+ :                  
+                    :-=++++=-:.  ... .:=#%*-  -#- -.                  
+                 .=+=-:..........:=+###+-  .=#+. =:.                  
+                 :.  .:::.  .-+#%#*=:   .-*#+. -*:.:                  
+                   :-:.  .-#%#+-.   .-+#*+:  -*= :-                   
+                 .:.   .+%#+:    :=+*+-.  :=+=. --                    
+                      =%#-    :=++-:   .-+=:  :-.                     
+                     +%-   .-==-.   .-==:   :-:                       
+                    =*.   :=-.   .:--:   .:-:                         
+                   :+    --.   .:-:    .::.                           
+                   :    ::    .:.    .:.                              
+                       :.    :.    ...                                
+                      ..    :.    ..                                  
+                                                                      """
+    print(ascii_art)
+    print("Welcome to DICMA. The Dictionary Maker: \n")
+
+def verbose_print(input_string):
+    global VERBOSE
+    if VERBOSE == True:
+        print(input_string)
+    
+def detec_if_file_or_not(input_to_check):
+    path_ = input_to_check
+    if os.path.isfile(path_):
+        return True
+    else:
+        return False
+
+def system_detection():
+    if os.name == "nt":
+        return "windows"
+    else:
+        return "linux"
+        
+def get_total_ram():
+    system = platform.system()
+
+    if system == "Linux":
+        try:
+            with open("/proc/meminfo", "r") as f:
+                for line in f:
+                    if line.startswith("MemTotal:"):
+                        parts = line.split()
+                        ram_kb = int(parts[1])
+                        return round(ram_kb / (1024 ** 2), 2)  # Convert kB to GB
+        except Exception as e:
+            print("Error reading /proc/meminfo:", e)
+
+    elif system == "Windows":
+        try:
+            kernel32 = ctypes.windll.kernel32
+            c_ulonglong = ctypes.c_ulonglong
+
+            class MEMORYSTATUSEX(ctypes.Structure):
+                _fields_ = [
+                    ('dwLength', ctypes.c_ulong),
+                    ('dwMemoryLoad', ctypes.c_ulong),
+                    ('ullTotalPhys', c_ulonglong),
+                    ('ullAvailPhys', c_ulonglong),
+                    ('ullTotalPageFile', c_ulonglong),
+                    ('ullAvailPageFile', c_ulonglong),
+                    ('ullTotalVirtual', c_ulonglong),
+                    ('ullAvailVirtual', c_ulonglong),
+                    ('sullAvailExtendedVirtual', c_ulonglong),
+                ]
+
+            memory = MEMORYSTATUSEX()
+            memory.dwLength = ctypes.sizeof(MEMORYSTATUSEX)
+            kernel32.GlobalMemoryStatusEx(ctypes.byref(memory))
+            return round(memory.ullTotalPhys / (1024 ** 3), 2)  # Convert bytes to GB
+        except Exception as e:
+            print("Error using ctypes on Windows:", e)
+
+    elif system == "Darwin":  # macOS
+        try:
+            result = subprocess.run(
+                ["sysctl", "hw.memsize"],
+                capture_output=True, text=True
+            )
+            output = result.stdout
+            if "hw.memsize:" in output:
+                ram_bytes = int(output.split(":")[1].strip())
+                return round(ram_bytes / (1024 ** 3), 2)  # Convert bytes to GB
+        except Exception as e:
+            print("Error running sysctl on macOS:", e)
+
+    else:
+        print("Unsupported operating system:", system)
+
+    return None
+    
+    
+def is_a_valid_file(file_path, blocksize=512):
+    try:
+        with open(file_path, 'rb') as file_:
+            chunk = file_.read(8192)
+        chunk.decode('latin-1')
+        return True
+
+    except UnicodeDecodeError:
+        return False
+    except Exception:
+        return False
+
+def save_list_to_file(list_, filename):
+    try:
+        with open(filename, 'w', encoding='utf-8') as f:
+            for item in list_:
+                f.write(f"{item}\n")
+        verbose_print(f"[+] Dictionary saved successfully to: {filename}")
+    except Exception as e:
+        print(f"Error saving dictionary: {e}", file=sys.stderr)
+
+def remove_accents(input_str):
+    return ''.join(
+        c for c in unicodedata.normalize('NFD', input_str)
+        if unicodedata.category(c) != 'Mn'
+    )
+
+def ask_for_yes_or_no(question):
+    while True:
+        answer = input(question + " (yes/no): ").strip().lower()
+        if answer in ["yes", "y"]:
+            return True
+        elif answer in ["no", "n"]:
+            return False
+        else:
+            print("Please, answer 'yes' or 'no'.")
+            
+def normalize(text):
+    return ''.join(
+        c for c in unicodedata.normalize('NFKD', text)
+        if not unicodedata.combining(c)
+    )
+
+def generate_usernames(person_name):
+    parts = person_name.strip().split()
+    if len(parts) == 0:
+        return []
+    if len(parts) == 1:
+        return [normalize(parts[0])]
+
+    def generate_combinations_light(name, surname):
+        name = normalize(name)
+        surname = normalize(surname)
+        f_name = name[0]
+        f_surname = surname[0]
+        return [
+            f"{name}",
+            f"{surname}",
+            f"{name}.{surname}",
+            f"{name}_{surname}",
+            f"{f_name}{surname}",
+            f"{f_name}.{surname}",
+            f"{name}{f_surname}",
+            f"{name}.{f_surname}",
+            f"{f_name}_{surname}",
+            f"{surname}.{name}",
+        ]
+
+    def generate_combinations(name, surname):
+        name = normalize(name)
+        surname = normalize(surname)
+        first_let_name = name[0]
+        first_let_surname = surname[0]
+        return [
+            f"{name} {surname}",
+            f"{name}",
+            f"{name}{surname}",
+            f"{first_let_name}{surname}",
+            f"{name}{first_let_surname}",
+            f"{name}.{surname}",
+            f"{first_let_name}.{surname}",
+            f"{name}.{first_let_surname}",
+            f"{name}_{surname}",
+            f"{first_let_name}_{surname}",
+            f"{name}_{first_let_surname}",
+            f"{name}-{surname}",
+            f"{first_let_name}-{surname}",
+            f"{name}-{first_let_surname}",
+            f"{first_let_name}{first_let_surname}",
+            f"{first_let_surname}{first_let_name}",
+            f"{first_let_name}.{first_let_surname}",
+            f"{first_let_surname}.{first_let_name}",
+            f"{first_let_name}-{first_let_surname}",
+            f"{first_let_surname}-{first_let_name}",
+            f"{first_let_name}_{first_let_surname}",
+            f"{first_let_surname}_{first_let_name}",
+            f"{surname}",
+            f"{surname}{name}",
+            f"{surname}{first_let_name}",
+            f"{surname}.{name}",
+            f"{surname}.{first_let_name}",
+            f"{surname}_{name}",
+            f"{surname}_{first_let_name}",
+            f"{surname}-{name}",
+            f"{surname}-{first_let_name}",
+        ]
+
+    # Name + surname
+    if len(parts) == 2:
+        name, surname = parts
+        if LIGHT_MODE:
+            return generate_combinations_light(name, surname)
+        return generate_combinations(name, surname)
+
+    # 3 words cases
+    if len(parts) == 3:
+        p1, p2, p3 = parts
+        if LIGHT_MODE:
+            p1, p2, p3 = normalize(p1), normalize(p2), normalize(p3)
+            i1, i2, i3 = p1[0], p2[0], p3[0]
+            combos = []
+
+            # 2-word patterns for name + first surname
+            combos.extend(generate_combinations_light(p1, p2))
+            # 2-word patterns for name + second surname
+            combos.extend(generate_combinations_light(p1, p3))
+
+            # 3-word combined patterns
+            combos.extend([
+                p3,                                      # second surname alone
+                f"{p1}.{p2}.{p3}",                       # name.surname1.surname2
+                f"{p1}_{p2}_{p3}",                       # name_surname1_surname2
+                f"{i1}{p2}{p3}",                         # flastname1lastname2
+                f"{i1}.{p2}.{p3}",                       # f.surname1.surname2
+                f"{i1}_{p2}_{p3}",                       # f_surname1_surname2
+                f"{p1}{i2}{p3}",                         # name.f_surname1.surname2
+                f"{p1}.{i2}.{p3}",                       # name.f.surname2
+                f"{p1}{p2}{i3}",                         # namesurname1f_surname2
+                f"{p1}.{p2}.{i3}",                       # name.surname1.f
+                f"{i1}{i2}{i3}",                         # three initials
+                f"{i1}.{i2}.{i3}",                       # f.m.l
+                f"{i1}_{i2}_{i3}",                       # f_m_l
+            ])
+            return list(dict.fromkeys(combos))
+        combinations = []
+        combinations.extend(generate_combinations(p1, p2)) # word1 + word2
+        combinations.extend(generate_combinations(p1, p3)) # word1 + word3
+        combinations.extend(generate_combinations(p2, p3)) # word2 + word3
+        # normalizing
+        p1 = normalize(p1)
+        p2 = normalize(p2)
+        p3 = normalize(p3)
+        i1 = p1[0]
+        i2 = p2[0]
+        i3 = p3[0]
+        # Specific formats for 3 words:
+        combinations.extend([
+            # Individual words
+            f"{p1}", f"{p2}", f"{p3}",
+
+            # Name + both surnames
+            f"{p1}{p2}{p3}",
+            f"{p1}.{p2}.{p3}",
+            f"{p1}_{p2}_{p3}",
+            f"{p1}-{p2}-{p3}",
+
+            # First letter + surnames
+            f"{i1}{p2}{p3}",
+            f"{i1}.{p2}.{p3}",
+            f"{i1}_{p2}_{p3}",
+            f"{i1}-{p2}-{p3}",
+
+            # Name + composed surname
+            f"{p1}{p2}-{p3}",
+            f"{p1}.{p2}-{p3}",
+            f"{p1}_{p2}-{p3}",
+            f"{i1}{p2}-{p3}",
+            f"{i1}.{p2}-{p3}",
+            f"{i1}_{p2}-{p3}",
+            f"{p1}-{p2}{p3}",
+            f"{p1}-{p2}.{p3}",
+
+            # Partial first letters (various separators)
+            f"{i1}{i2}{p3}",    f"{i1}.{i2}.{p3}",    f"{i1}_{i2}_{p3}",    f"{i1}-{i2}-{p3}",
+            f"{i1}{p2}{i3}",    f"{i1}.{p2}.{i3}",    f"{i1}_{p2}_{i3}",    f"{i1}-{p2}-{i3}",
+            f"{p1}{i2}{p3}",    f"{p1}.{i2}.{p3}",    f"{p1}_{i2}_{p3}",    f"{p1}-{i2}-{p3}",
+            f"{p1}{p2}{i3}",    f"{p1}.{p2}.{i3}",    f"{p1}_{p2}_{i3}",    f"{p1}-{p2}-{i3}",
+
+            # 3-initials (name-surname1-surname2)
+            f"{i1}{i2}{i3}",    f"{i1}.{i2}.{i3}",    f"{i1}-{i2}-{i3}",    f"{i1}_{i2}_{i3}",
+            # 3-initials (surname2-surname1-name)
+            f"{i3}{i2}{i1}",    f"{i3}.{i2}.{i1}",    f"{i3}-{i2}-{i1}",    f"{i3}_{i2}_{i1}",
+            # 3-initials (surname1-name-surname2)
+            f"{i2}{i1}{i3}",    f"{i2}.{i1}.{i3}",    f"{i2}-{i1}-{i3}",    f"{i2}_{i1}_{i3}",
+            # 3-initials (surname1-surname2-name)
+            f"{i2}{i3}{i1}",    f"{i2}.{i3}.{i1}",    f"{i2}-{i3}-{i1}",    f"{i2}_{i3}_{i1}",
+
+            # Alternative surname orders
+            f"{p3}{p2}{p1}",    f"{p3}.{p2}.{p1}",    f"{p3}_{p2}_{p1}",    f"{p3}-{p2}-{p1}",
+            f"{p1}{p3}{p2}",    f"{p1}.{p3}.{p2}",    f"{p1}_{p3}_{p2}",    f"{p1}-{p3}-{p2}",
+
+            # Mixed initial + 2 full words (alternate orders)
+            f"{i1}{p3}{p2}",    f"{i1}.{p3}.{p2}",    f"{i1}_{p3}_{p2}",    f"{i1}-{p3}-{p2}",
+            f"{i2}{p3}{p1}",    f"{i2}.{p3}.{p1}",    f"{i2}_{p3}_{p1}",    f"{i2}-{p3}-{p1}",
+            f"{i3}{p1}{p2}",    f"{i3}.{p1}.{p2}",    f"{i3}_{p1}_{p2}",    f"{i3}-{p1}-{p2}",
+
+            # Full word + initial + full word (alternate orders)
+            f"{p3}{i1}{p2}",    f"{p3}.{i1}.{p2}",    f"{p3}_{i1}_{p2}",    f"{p3}-{i1}-{p2}",
+            f"{p1}{i3}{p2}",    f"{p1}.{i3}.{p2}",    f"{p1}_{i3}_{p2}",    f"{p1}-{i3}-{p2}",
+            f"{p2}{i3}{p1}",    f"{p2}.{i3}.{p1}",    f"{p2}_{i3}_{p1}",    f"{p2}-{i3}-{p1}",
+        ])
+        return list(dict.fromkeys(combinations))
+    print("[!] Unsupported names -> " + str(person_name))
+    return []
+
+
+
+def normalize_list(input_):
+    file_or_not = detec_if_file_or_not(input_)
+    if file_or_not == True:
+        with open(input_, 'r', encoding='utf-8') as file_:
+            words_list = [line.strip() for line in file_ if line.strip()]
+            return words_list
+    else:
+        raw_list = input_.strip().split(',')
+        words_list = [word.strip() for word in raw_list if word.strip()]
+        return words_list
+
+def process_file_user(file_name, output_file_name):
+    global OUTPUT_FILE_BULEAN
+    with open(file_name, 'r', encoding='utf-8') as file_:
+        if OUTPUT_FILE_BULEAN == False:
+            for line_ in file_:
+                line_ = line_.strip()
+                if not line_:
+                    continue  # Omitir líneas vacías
+                combinations = generate_usernames(line_)
+                for element in combinations:
+                    print(element)
+        else:
+            complet_list = []
+            for line_ in file_:
+                line_ = line_.strip()
+                if not line_:
+                    continue 
+                combinations = generate_usernames(line_)
+                for element in combinations:
+                    complet_list.append(element)
+            save_list_to_file(complet_list, output_file_name)  
+    
+def process_input_user(input_, output_file_name):
+    global OUTPUT_FILE_BULEAN
+    raw_list = input_.strip().split(',')
+    people_list = [name.strip() for name in raw_list if name.strip()]
+    final_list = []
+    if OUTPUT_FILE_BULEAN == False:
+        for name in people_list:
+            final_list += generate_usernames(name) 
+        for element in final_list:
+            print(element) 
+    else:
+        for name in people_list:
+            final_list += generate_usernames(name) 
+        save_list_to_file(final_list, output_file_name)
+  
+def process_passwd(words_list, output_file_name):
+    global OUTPUT_FILE_BULEAN
+    global FULL_MODE
+    global LIGHT_MODE
+    verbose_print("[+] Creating dictionary.")
+    
+    # Checking for massive mode:
+    if len(words_list) >= 2 and FULL_MODE == True:
+        massive_mode(words_list, output_file_name)
+        sys.exit(0)
+    if len(words_list) >= 10 and LIGHT_MODE == False:
+        massive_mode(words_list, output_file_name)
+        sys.exit(0) 
+    if len(words_list) >= 100:
+        massive_mode(words_list, output_file_name)
+        sys.exit(0)
+
+    final_list = []
+    if OUTPUT_FILE_BULEAN == False:
+        for word in words_list:
+            final_list += generate_password_list(word, FULL_MODE, LIGHT_MODE) 
+        for element in final_list:
+            print(element)
+    else:
+        for word in words_list:
+            final_list += generate_password_list(word, FULL_MODE, LIGHT_MODE)
+        save_list_to_file(final_list, output_file_name)
+        
+CHUNK_SIZE = 300
+BATCH_GROUP_SIZE = 15
+
+DEFAULT_API_KEY = None
+DEFAULT_BASE_URL = "https://api.deepseek.com"
+DEFAULT_MODEL = "deepseek-v4-flash"
+
+
+def _generate_config_template(path):
+    content = (
+        "# DICMA - LLM configuration\n"
+        "# Pick one provider and fill in your API key if needed.\n"
+        "#\n"
+        "# === Ollama (local, no API key, no registration) ===\n"
+        "#  1. Install: brew install ollama\n"
+        "#  2. Start:   ollama serve\n"
+        "#  3. Pull:    ollama pull llama3.2:3b\n"
+        "#\n"
+        'API_KEY = "ollama"\n'
+        'BASE_URL = "http://localhost:11434/v1"\n'
+        'MODEL = "llama3.2:3b"\n'
+        "\n"
+        "# === DeepSeek (recommended for best results) ===\n"
+        "#  Sign up at https://platform.deepseek.com\n"
+        "#  Requires credit (very cheap ~$0.01/request)\n"
+        '# API_KEY = "sk-"\n'
+        '# BASE_URL = "https://api.deepseek.com"\n'
+        '# MODEL = "deepseek-v4-flash"\n'
+        "\n"
+        "# === OpenAI ===\n"
+        '# API_KEY = "sk-"\n'
+        '# BASE_URL = "https://api.openai.com/v1"\n'
+        '# MODEL = "gpt-4o-mini"\n'
+    )
+    with open(path, "w", encoding="utf-8") as f:
+        f.write(content)
+
+
+def _load_config(path):
+    cfg = {}
+    if not path or not os.path.isfile(path):
+        return cfg
+    with open(path, encoding="utf-8") as f:
+        for line in f:
+            line = line.strip()
+            if not line or line.startswith("#"):
+                continue
+            m = re.match(r'^(\w+)\s*=\s*["\']?(.+?)["\']?\s*$', line)
+            if m:
+                cfg[m.group(1)] = m.group(2)
+    return cfg
+
+
+def _resolve_config(args):
+    config = _load_config(args.config)
+
+    api_key = (
+        args.api_key
+        or os.getenv("LLM_API_KEY")
+        or os.getenv("OPENAI_API_KEY")
+        or config.get("API_KEY")
+        or DEFAULT_API_KEY
+    )
+    base_url = (
+        args.base_url
+        or os.getenv("LLM_BASE_URL")
+        or os.getenv("OPENAI_BASE_URL")
+        or config.get("BASE_URL")
+        or DEFAULT_BASE_URL
+    )
+    model = (
+        args.model
+        or os.getenv("LLM_MODEL")
+        or config.get("MODEL")
+        or DEFAULT_MODEL
+    )
+    if not api_key:
+        print(
+            "Error: no API key provided. Use --api-key, LLM_API_KEY env var, "
+            "or a config file.",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+    return api_key, base_url, model
+
+
+def _parse_words(raw):
+    try:
+        return json.loads(raw).get("words", [])
+    except json.JSONDecodeError:
+        pass
+    raw_fixed = raw.rstrip() + '"]}'
+    try:
+        return json.loads(raw_fixed).get("words", [])
+    except json.JSONDecodeError:
+        pass
+    matches = re.findall(r'"([^"]+)"', raw)
+    return [m for m in matches if len(m) >= 2]
+
+
+def _parse_words_batch(raw, input_words):
+    result = {w: [] for w in input_words}
+    try:
+        data = json.loads(raw).get("words", {})
+        if isinstance(data, dict):
+            for w, vals in data.items():
+                w_lower = w.strip().lower()
+                if w_lower in result and isinstance(vals, list):
+                    result[w_lower].extend(
+                        [v.strip().lower() for v in vals if isinstance(v, str)]
+                    )
+        return result
+    except json.JSONDecodeError:
+        pass
+    raw_fixed = raw.rstrip() + '"}'
+    try:
+        data = json.loads(raw_fixed).get("words", {})
+        if isinstance(data, dict):
+            for w, vals in data.items():
+                w_lower = w.strip().lower()
+                if w_lower in result and isinstance(vals, list):
+                    result[w_lower].extend(
+                        [v.strip().lower() for v in vals if isinstance(v, str)]
+                    )
+        return result
+    except json.JSONDecodeError:
+        pass
+    for word in input_words:
+        escaped = re.escape(word)
+        matches = re.findall(rf'"{escaped}"\s*:\s*\[(.*?)(?:\]|\Z)', raw)
+        for block in matches:
+            vals = re.findall(r'"([^"]+)"', block)
+            result[word].extend([v.strip().lower() for v in vals if len(v) >= 2])
+    return result
+
+
+def _handle_api_error(e):
+    msg = str(e).lower()
+    body = getattr(e, "body", None) or {}
+
+    if isinstance(body, dict):
+        inner = body.get("error", body.get("message", ""))
+        msg += " " + str(inner).lower()
+
+    if any(x in msg for x in ("400", "invalid_request_error", "model name", "model names")):
+        print(f"[-] Invalid model or request: {e}", file=sys.stderr)
+        print("    Check MODEL in config.txt or --model argument.", file=sys.stderr)
+        sys.exit(1)
+
+    if any(x in msg for x in ("401", "unauthorized", "invalid api key", "incorrect api key")):
+        print("[-] Authentication failed: invalid or missing API key.", file=sys.stderr)
+        print("    Check API_KEY in config.txt or --api-key argument.", file=sys.stderr)
+        sys.exit(1)
+
+    if any(x in msg for x in ("402", "insufficient", "quota", "billing", "balance", "payment")):
+        print("[-] Insufficient quota or billing issue.", file=sys.stderr)
+        print("    Check your account balance at the provider.", file=sys.stderr)
+        sys.exit(1)
+
+    if any(x in msg for x in ("403", "permission", "forbidden", "access denied")):
+        print("[-] Permission denied. Your API key may not have access to this model.", file=sys.stderr)
+        print("    Check MODEL in config.txt and your API key permissions.", file=sys.stderr)
+        sys.exit(1)
+
+    if any(x in msg for x in ("404", "not found", "does not exist")):
+        print(f"[-] Model not found. Check MODEL in config.txt.", file=sys.stderr)
+        sys.exit(1)
+
+    if any(x in msg for x in ("connection", "timeout", "refused", "unreachable", "resolve", "network")):
+        print("[-] Could not connect to the LLM API.", file=sys.stderr)
+        print("    Check your internet connection and BASE_URL in config.txt.", file=sys.stderr)
+        print("    If using Ollama, make sure 'ollama serve' is running.", file=sys.stderr)
+        sys.exit(1)
+
+    if any(x in msg for x in ("429", "rate limit", "too many requests")):
+        print("[-] Rate limited by the API. Retrying...", file=sys.stderr)
+        return False
+
+    print(f"[-] API error: {e}", file=sys.stderr)
+    raise
+
+
+def _call_api(client, model, word, n):
+    try:
+        response = client.chat.completions.create(
+            model=model,
+            messages=[{
+                "role": "user",
+                "content": (
+                    f'List exactly {n} terms (lowercase, no spaces) with the '
+                    f'strongest semantic relationship to "{word}". Prioritize '
+                    f'synonyms, conceptually-related words, and terms from '
+                    f'the same domain or universe. Do NOT add numbers, '
+                    f'symbols, or character substitutions — just plain words. '
+                    f'Return ONLY a JSON object {{"words": [...]}}. '
+                    f'No markdown or explanation.'
+                ),
+            }],
+            response_format={"type": "json_object"},
+            temperature=0.8,
+            max_tokens=8192,
+        )
+        return _parse_words(response.choices[0].message.content)
+    except Exception as e:
+        _handle_api_error(e)
+        raise
+
+
+def _call_api_batch(client, model, words, n):
+    quoted = ", ".join(f'"{w}"' for w in words)
+    try:
+        response = client.chat.completions.create(
+            model=model,
+            messages=[{
+                "role": "user",
+                "content": (
+                    f'For each of these words: [{quoted}], list exactly {n} '
+                    f'terms (lowercase, no spaces) with the strongest semantic '
+                    f'relationship. Do NOT add numbers, symbols, or character '
+                    f'substitutions — just plain words. Return ONLY a JSON '
+                    f'object: {{"words": {{"word1": [...], "word2": [...], ...}}}}. '
+                    f'No markdown or explanation.'
+                ),
+            }],
+            response_format={"type": "json_object"},
+            temperature=0.8,
+            max_tokens=8192,
+        )
+        return _parse_words_batch(
+            response.choices[0].message.content, words
+        )
+    except Exception as e:
+        _handle_api_error(e)
+        raise
+
+
+def _chunks(lst, size):
+    for i in range(0, len(lst), size):
+        yield lst[i:i + size]
+
+
+def _llm_neighbours(client, model, word, n):
+    import time
+    all_words = []
+    stale = 0
+    call_num = 0
+    t0 = time.time()
+    for _ in range(n):
+        needed = n - len(all_words)
+        if needed <= 0:
+            break
+        if needed <= 50 and call_num == 0:
+            batch_n = min(needed, CHUNK_SIZE)
+        else:
+            batch_n = min(max(int(needed * 2), 50), CHUNK_SIZE)
+        before = len(all_words)
+        call_num += 1
+        batch = _call_api(client, model, word, batch_n)
+        if not batch:
+            for attempt in range(1, 3):
+                verbose_print(
+                    f"[!] L1 '{word}': call {call_num} "
+                    f"returned 0 words, retry {attempt}/2"
+                )
+                batch = _call_api(client, model, word, batch_n)
+                if batch:
+                    break
+        for w in batch:
+            cleaned = w.strip().lower()
+            if cleaned and cleaned not in all_words:
+                all_words.append(cleaned)
+        new_count = len(all_words) - before
+        verbose_print(
+            f"[+] L1 '{word}': call {call_num} ({batch_n} req, "
+            f"needed {needed}) → {len(batch)} returned, {new_count} new. "
+            f"Total: {len(all_words)}/{n}"
+        )
+        if call_num >= 3:
+            verbose_print(
+                f"[!] L1 '{word}': stopping after {call_num} calls "
+                f"({len(all_words)}/{n} words)"
+            )
+            break
+        if len(all_words) == before:
+            stale += 1
+            if stale >= 3:
+                break
+        else:
+            stale = 0
+    elapsed = time.time() - t0
+    verbose_print(
+        f"[+] L1 '{word}': done — {len(all_words)} words, "
+        f"{call_num} call(s), {elapsed:.1f}s"
+    )
+    return all_words[:n]
+
+
+def ml_expand_words(client, model, input_words, n1, n2, n3):
+    seen = set(input_words)
+
+    # ---------- level 1 ----------
+    level1 = []
+    for word in input_words:
+        try:
+            neighbours = _llm_neighbours(client, model, word, n1)
+            level1.append((word, neighbours))
+            for nb in neighbours:
+                cleaned = nb.strip().lower()
+                if cleaned and cleaned not in seen:
+                    seen.add(cleaned)
+        except Exception as exc:
+            print(f"Error L1 '{word}': {exc}", file=sys.stderr)
+
+    if n2 <= 0:
+        return seen
+
+    # ---------- level 2 ----------
+    all_l1_words = []
+    for parent, siblings in level1:
+        for s in siblings:
+            if s != parent and s not in all_l1_words:
+                all_l1_words.append(s)
+
+    for group in _chunks(all_l1_words, BATCH_GROUP_SIZE):
+        try:
+            batch_result = _call_api_batch(client, model, group, n2)
+        except Exception as exc:
+            print(f"Error L2 batch: {exc}", file=sys.stderr)
+            continue
+        for word in group:
+            for nb in batch_result.get(word, []):
+                cleaned = nb.strip().lower()
+                if cleaned and cleaned not in seen:
+                    seen.add(cleaned)
+
+    if n3 <= 0:
+        return seen
+
+    # ---------- level 3 ----------
+    all_l2_words = [w for w in seen if w not in input_words]
+
+    for group in _chunks(all_l2_words, BATCH_GROUP_SIZE):
+        try:
+            batch_result = _call_api_batch(client, model, group, n3)
+        except Exception as exc:
+            print(f"Error L3 batch: {exc}", file=sys.stderr)
+            continue
+        for word in group:
+            for nb in batch_result.get(word, []):
+                cleaned = nb.strip().lower()
+                if cleaned and cleaned not in seen:
+                    seen.add(cleaned)
+
+    return seen
+
+def worker_generate(word, FULL_MODE, LIGHT_MODE, queue, batch_size=200):
+    try:
+        batch = []
+        for line in generate_password_list(word, FULL_MODE, LIGHT_MODE):
+            batch.append(line)
+            if len(batch) >= batch_size:
+                queue.put('\n'.join(batch))
+                batch.clear()
+        if batch:
+            queue.put('\n'.join(batch))
+    except Exception as e:
+        queue.put(f"# Error with word '{word}': {e}")   
+
+def worker_task(args):
+    word, FULL_MODE, LIGHT_MODE, queue = args
+    worker_generate(word, FULL_MODE, LIGHT_MODE, queue)
+
+def massive_mode(list_, output_file_name):
+    global LIGHT_MODE, FULL_MODE, OUTPUT_FILE_BULEAN
+
+    verbose_print("[!] Massive mode ENABLED")
+    if not OUTPUT_FILE_BULEAN:
+        verbose_print("[!] Massive mode printing to stdout (use -o to save to file).")
+
+    cpu_cores = multiprocessing.cpu_count()
+    if FULL_MODE == True:
+        ram = get_total_ram()
+        verbose_print(f"[i] {ram} GB RAM detected.")
+        if ram <= 31:
+            cpu_cores = cpu_cores // 2
+            if cpu_cores == 0:
+                cpu_cores = 1
+        if ram <= 15:
+            verbose_print("[!] WARNING! Full mode + multicore could saturate RAM, crash, and go slower than expected. \n[!] We will use just few cores... Go for a coffe.")
+            cpu_cores = cpu_cores // 4
+            if cpu_cores == 0:
+                cpu_cores = 1
+    verbose_print(f"[+] Using {cpu_cores} CPU cores")
+
+    output_size_lines = len(list_) * 900000
+    if LIGHT_MODE == True:
+        output_size_lines = len(list_) * 7700
+    if FULL_MODE == True:
+        output_size_lines = len(list_) * 5000000
+    avg_line_size_bytes = 16
+    estimated_size_bytes = output_size_lines * avg_line_size_bytes
+    estimated_size_gb =  round(estimated_size_bytes / (1024 ** 3), 2)
+    verbose_print("[i] Expected file size -> " + str(estimated_size_gb) + " GB / " + str(output_size_lines) + " Lines (aprox.)")
+
+    manager = multiprocessing.Manager()
+    queue = manager.Queue(maxsize=500)
+    pool = multiprocessing.Pool(cpu_cores)
+    args_list = [(word, FULL_MODE, LIGHT_MODE, queue) for word in list_]
+    results = [pool.apply_async(worker_task, (args,)) for args in args_list]
+
+    if OUTPUT_FILE_BULEAN:
+        out_f = open(output_file_name, 'w', encoding='utf-8')
+    else:
+        out_f = sys.stdout
+
+    try:
+        processed_words = 0
+        total_words = len(list_)
+
+        while processed_words < total_words:
+            try:
+                chunk = queue.get(timeout=5)
+                out_f.write(chunk + '\n')
+            except Exception:
+                if all(r.ready() for r in results):
+                    while not queue.empty():
+                        out_f.write(queue.get() + '\n')
+                    processed_words = total_words
+
+            processed_words = sum(1 for r in results if r.ready())
+            progress = processed_words / total_words * 100
+            print(f"\r[+] Progress: {progress:.2f}%", end='', flush=True)
+    finally:
+        if OUTPUT_FILE_BULEAN:
+            out_f.close()
+
+    pool.close()
+    pool.join()
+    if OUTPUT_FILE_BULEAN:
+        print(f"\n[+] Finished. Output saved to {output_file_name}")
+    else:
+        print(f"\n[+] Finished.")
+
+def generate_password_list(word, FULL_MODE, LIGHT_MODE):
+    global amount_of_sufixs_used
+    global amount_of_prefixs_used
+    
+    if LIGHT_MODE == True:
+        amount_of_sufixs_used = amount_of_sufixs_used_light_mode
+        amount_of_prefixs_used = amount_of_prefixs_used_light_mode
+
+    # GENERATING BASIC PATTERN:
+    basic_pattern = []
+    word = str(word).lower()
+    word_no_punctuation = remove_accents(word)
+    
+    basic_pattern.append(word)
+    basic_pattern.append(word.upper())
+    basic_pattern.append(word.capitalize())
+    basic_pattern.append(word_no_punctuation)
+    basic_pattern.append(word_no_punctuation.upper())
+    basic_pattern.append(word_no_punctuation.capitalize()) 
+
+    basic_pattern = list(set(basic_pattern))
+    
+    transform_1 = [item.replace("a", "@").replace("A", "@") for item in basic_pattern]
+    basic_pattern.extend(transform_1)
+    transform_2 = [item.replace("o", "0").replace("O", "0") for item in basic_pattern]
+    basic_pattern.extend(transform_2)
+    if LIGHT_MODE == False:
+        transform_3 = [item.replace("e", "€").replace("E", "€") for item in basic_pattern]
+        basic_pattern.extend(transform_3)
+        transform_4 = [item.replace("e", "3").replace("E", "3") for item in basic_pattern]
+        basic_pattern.extend(transform_4)
+        transform_5 = [item.replace("s", "$").replace("S", "$") for item in basic_pattern]
+        basic_pattern.extend(transform_5)
+        transform_6 = [item.replace("l", "1").replace("L", "1") for item in basic_pattern]
+        basic_pattern.extend(transform_6)
+    
+    non_repeated_list = []
+    for item in basic_pattern:
+        if item not in non_repeated_list:
+            non_repeated_list.append(item)
+    
+    # word + sufix
+    word_sufixs = [a + b for a in basic_pattern for b in BASIC_SUFIXS[:amount_of_sufixs_used]]
+    non_repeated_list.extend(word_sufixs)
+    # prefix + word
+    prefix_word = [a + b for a in BASIC_PREFIXS[:amount_of_prefixs_used] for b in basic_pattern]
+    non_repeated_list.extend(prefix_word)    
+    # prefix + word + sufix
+    prefix_word_sufixs = [a + b + c for a in BASIC_PREFIXS[:amount_of_prefixs_used//3] for b in basic_pattern for c in BASIC_SUFIXS[:amount_of_sufixs_used//3]]
+    non_repeated_list.extend(prefix_word_sufixs)
+    
+    # EXTENDED MODE:
+    if FULL_MODE == True:
+        # word + number
+        word_number = [a + b for a in basic_pattern for b in NUMERIC_PATTERNS[:amount_of_numericpat_used]]
+        non_repeated_list.extend(word_number)
+        # word + simbol
+        word_simbol = [a + b for a in basic_pattern for b in SYMBOLIC_PATTERNS[:amount_of_symbolpat_used]]
+        non_repeated_list.extend(word_simbol)
+        # word + number + simbol
+        word_number_simbol = [a + b + c for a in basic_pattern for b in NUMERIC_PATTERNS[:amount_of_numericpat_used] for c in SYMBOLIC_PATTERNS[:amount_of_symbolpat_used]]
+        non_repeated_list.extend(word_number_simbol)
+        # word + simbol + number
+        word_simbol_number = [a + b + c for a in basic_pattern for b in SYMBOLIC_PATTERNS[:amount_of_symbolpat_used] for c in NUMERIC_PATTERNS[:amount_of_numericpat_used]]
+        non_repeated_list.extend(word_simbol_number)
+        # simbol + word
+        simbol_word = [a + b for a in SYMBOLIC_PATTERNS[:amount_of_symbolpat_used] for b in basic_pattern]
+        non_repeated_list.extend(simbol_word)
+        # number + word
+        number_word = [a + b for a in NUMERIC_PATTERNS[:amount_of_numericpat_used] for b in basic_pattern]
+        non_repeated_list.extend(number_word)
+        # simbol + word + number
+        simbol_word_number = [a + b + c for a in SYMBOLIC_PATTERNS[:amount_of_symbolpat_used] for b in basic_pattern for c in NUMERIC_PATTERNS[:amount_of_numericpat_used]]
+        non_repeated_list.extend(simbol_word_number)
+        # number + word + simbol
+        number_word_simbol = [a + b + c for a in NUMERIC_PATTERNS[:amount_of_numericpat_used] for b in basic_pattern for c in SYMBOLIC_PATTERNS[:amount_of_symbolpat_used]]
+        non_repeated_list.extend(number_word_simbol)
+        
+    non_repeated_list = list(dict.fromkeys(non_repeated_list))
+    return non_repeated_list
+
+def extract_patterns(file_input):
+    sufixs = []
+    prefixs = []
+    numbers = []
+    symbols = []
+
+    with open(file_input, 'r', encoding='utf-8', errors='ignore') as file_:
+        for linea in file_:
+            linea = linea.strip()
+            
+            match = re.search(r'(?:[^\W\d]|-){3,}', linea, flags=re.UNICODE)
+            if match:
+                concept_start = match.start()
+                concept_end = match.end()
+
+                prefix = linea[:concept_start].strip()
+                sufix = linea[concept_end:].strip()
+
+                if prefix:
+                    prefixs.append(prefix)
+                if sufix:
+                    sufixs.append(sufix)
+            verbose_print("[+] Prefix and Sufix successfully extracted")
+
+            found_numbers = re.findall(r'\d+', linea)
+            numbers.extend(found_numbers)
+            verbose_print("[+] Numeric patterns successfully extracted")
+
+            found_symbols = re.findall(r'[^\w\s]+', linea, flags=re.UNICODE)
+            symbols.extend(found_symbols)
+            verbose_print("[+] Symbol patterns successfully extracted")
+
+    sorted_sufixs = [item for item, count in Counter(sufixs).most_common() if count >= 2]
+    sorted_prefixs = [item for item, count in Counter(prefixs).most_common() if count >= 2]
+    sorted_numbers = [item for item, count in Counter(numbers).most_common() if count >= 2]
+    sorted_symbols = [item for item, count in Counter(symbols).most_common() if count >= 2]
+
+    return sorted_sufixs, sorted_prefixs, sorted_numbers, sorted_symbols
+
+
+def main():
+    global VERBOSE
+    global LIGHT_MODE
+    global FULL_MODE
+    global OUTPUT_FILE_BULEAN
+    global BASIC_SUFIXS
+    global BASIC_PREFIXS
+    global NUMERIC_PATTERNS
+    global SYMBOLIC_PATTERNS
+
+    if len(sys.argv) == 1:
+        print_banner()
+
+    # Generate config before argparse so it works on first run with no args
+    config_path = "config.txt"
+    for i, arg in enumerate(sys.argv):
+        if arg == "--config" and i + 1 < len(sys.argv):
+            config_path = sys.argv[i + 1]
+            break
+    if not os.path.isfile(config_path):
+        _generate_config_template(config_path)
+        print(f"[i] Created {config_path} — edit it and paste your API key "
+              "to use -jn or -p -n1 modes.")
+
+    output_file_name = ''
+
+    parser = argparse.ArgumentParser(description="Welcome to DICMA. The Dictionary Maker:")
+
+    group = parser.add_mutually_exclusive_group(required=True)
+    group.add_argument('-u', '--users', help='File with usernames, or usernames list: "jony random,fahim jordan,..."')
+    group.add_argument('-p', '--password', help='file with words to "passworize", or list like: "ibis,megacorp,..."')
+    group.add_argument('-jn', '--just-neighbours', help='Find semantic neighbours using an LLM API.')
+
+    parser.add_argument('-l', '--light', action='store_true', help='Light mode, for small list (passwd mode).')
+    parser.add_argument('-f', '--full', action='store_true', help='Full mode. Warning, the output could be very heavy (passwd mode).')
+    parser.add_argument('-nv','--no-verbose', action='store_true', help='Remove any output except the dictionary itself (Errors will be shown anyway).')
+    parser.add_argument('-d','--dictionary', metavar='file_name', help='Extract patterns from your an specific dictionary.')
+    parser.add_argument('-o', '--output', metavar='file_name', help='Dictionary will be stored in this file.')
+    parser.add_argument('-n1', type=int, default=0, help='Number of level-1 neighbours per input word (triggers LLM mode).')
+    parser.add_argument('-n2', type=int, default=0, help='Optional: number of level-2 neighbours per level-1 result.')
+    parser.add_argument('-n3', type=int, default=0, help='Optional: number of level-3 neighbours per level-2 result.')
+    parser.add_argument('--api-key', help='LLM API key (or set LLM_API_KEY / OPENAI_API_KEY env var).')
+    parser.add_argument('--base-url', help='LLM API base URL (default from config.txt or Ollama localhost).')
+    parser.add_argument('--model', help='LLM model name (default from config.txt or llama3.2:3b).')
+    parser.add_argument('--config', default='config.txt', help='Config file path (default: config.txt).')
+
+    args = parser.parse_args()
+
+    if args.light == True and args.full == True:
+        print('[!] Light mode and Full mode can not be at same time. Exiting...')
+        sys.exit(1)
+    if args.no_verbose:
+        VERBOSE = False
+    if args.light:
+        LIGHT_MODE = True
+        verbose_print("[+] Light mode enabled.")
+    if args.full:
+        FULL_MODE = True
+        verbose_print("[+] Full mode enabled.")
+        verbose_print("[!] Warning, the output could be very heavy.")
+    if args.output:
+        OUTPUT_FILE_BULEAN = True
+        output_file_name = args.output
+        verbose_print("[i] Dictionary will be stored in this file -> "+str(output_file_name))
+
+    if args.dictionary is not None:
+        if is_a_valid_file(args.dictionary):
+            verbose_print("[+] Using "+str(args.dictionary)+" as a dictionary.")
+        else:
+            print("[!] File introduced as dictionary is not valid. Exiting...")
+            sys.exit(1)
+        dictionary = args.dictionary
+        verbose_print("[+] Extracting patterns... this will take a minut.")
+        BASIC_SUFIXS, BASIC_PREFIXS, NUMERIC_PATTERNS, SYMBOLIC_PATTERNS = extract_patterns(dictionary)
+        verbose_print("[+] Patterns successfuly extracted, creating dictionary...")
+
+    if args.users is not None:
+        if args.n1 > 0:
+            print("[-] Sorry, LLM neighbour expansion is not compatible with USERS mode.")
+            sys.exit(1)
+        if args.users.strip() == "":
+            print("Error: This argument can not be empty", file=sys.stderr)
+            sys.exit(1)
+        verbose_print("[+] USER mode selected.")
+        file_or_not = detec_if_file_or_not(args.users)
+        if file_or_not == True:
+            process_file_user(args.users, output_file_name)
+            sys.exit(0)
+        else:
+            process_input_user(args.users, output_file_name)
+            sys.exit(0)
+
+    elif args.password is not None:
+        if args.password.strip() == "":
+            print("Error: This argument can not be empty", file=sys.stderr)
+            sys.exit(1)
+        input_list = normalize_list(args.password)
+
+        if args.n1 > 0:
+            api_key, base_url, model = _resolve_config(args)
+            verbose_print(f"[+] LLM mode enabled. Model: {model}")
+            client = OpenAI(api_key=api_key, base_url=base_url)
+            expanded = ml_expand_words(client, model, input_list, args.n1, args.n2, args.n3)
+            ml_list = list(expanded)
+            verbose_print(f"[+] LLM expansion: {len(ml_list)} total words (input + neighbours).")
+            process_passwd(ml_list, output_file_name)
+            sys.exit(0)
+
+        verbose_print("[+] PASSWORD mode selected.")
+        process_passwd(input_list, output_file_name)
+        sys.exit(0)
+
+    if args.just_neighbours is not None:
+        if args.n1 <= 0:
+            print("[-] -jn requires -n1 (at least). Use -n1 20 for example.")
+            sys.exit(1)
+
+        api_key, base_url, model = _resolve_config(args)
+        verbose_print(f"[+] LLM mode enabled. Model: {model}")
+        client = OpenAI(api_key=api_key, base_url=base_url)
+
+        input_list = normalize_list(args.just_neighbours)
+        expanded = ml_expand_words(client, model, input_list, args.n1, args.n2, args.n3)
+        result = [w for w in expanded if w not in input_list]
+        if OUTPUT_FILE_BULEAN:
+            save_list_to_file(result, output_file_name)
+        else:
+            for word in result:
+                print(word)
+        sys.exit(0)
+
+
+if __name__ == "__main__":
+    main()
+
+    
+    
+    

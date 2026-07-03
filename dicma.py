@@ -1020,6 +1020,183 @@ def extract_patterns(file_input):
     return sorted_sufixs, sorted_prefixs, sorted_numbers, sorted_symbols
 
 
+def _ascii_chain(s):
+    return "".join(c for c in s if ord(c) < 128)
+
+
+def _build_append_rule(s):
+    s = _ascii_chain(s)
+    return "".join(f"${c}" for c in s) if s else ""
+
+
+def _build_prepend_rule(s):
+    s = _ascii_chain(s)
+    return "".join(f"^{c}" for c in reversed(s)) if s else ""
+
+
+def _leet_combos(light=False):
+    atoms = ["sa@", "so0"]
+    if not light:
+        atoms.extend(["se3", "ss$", "sl1"])
+
+    combos = [""]  # no leet
+    n = len(atoms)
+    for a in atoms:
+        combos.append(a)
+    for i in range(n):
+        for j in range(i + 1, n):
+            combos.append(f"{atoms[i]} {atoms[j]}")
+    if not light:
+        for i in range(n):
+            for j in range(i + 1, n):
+                for k in range(j + 1, n):
+                    combos.append(f"{atoms[i]} {atoms[j]} {atoms[k]}")
+        for i in range(n):
+            for j in range(i + 1, n):
+                for k in range(j + 1, n):
+                    for m in range(k + 1, n):
+                        combos.append(f"{atoms[i]} {atoms[j]} {atoms[k]} {atoms[m]}")
+        combos.append(" ".join(atoms))
+    return combos
+
+
+def _leet_combos_simple(light=False):
+    """Returns empty, singles, pairs and triples (no quads)."""
+    atoms = ["sa@", "so0"]
+    if not light:
+        atoms.extend(["se3", "ss$", "sl1"])
+    combos = [""]
+    n = len(atoms)
+    for a in atoms:
+        combos.append(a)
+    for i in range(n):
+        for j in range(i + 1, n):
+            combos.append(f"{atoms[i]} {atoms[j]}")
+    if not light:
+        for i in range(n):
+            for j in range(i + 1, n):
+                for k in range(j + 1, n):
+                    combos.append(f"{atoms[i]} {atoms[j]} {atoms[k]}")
+    return combos
+
+
+def generate_rules(suffixes, prefixes, light=False, full=False):
+    if light:
+        suf_lim = 120
+        pre_lim = 35
+        num_suf = 40
+        num_pre = 20
+        sym_lim = 20
+        combo_pre = 8
+        combo_suf = 15
+    elif full:
+        suf_lim = 9999
+        pre_lim = 9999
+        num_suf = 9999
+        num_pre = 9999
+        sym_lim = 9999
+        combo_pre = 9999
+        combo_suf = 9999
+    else:
+        suf_lim = 800
+        pre_lim = 80
+        num_suf = 200
+        num_pre = 80
+        sym_lim = 50
+        combo_pre = 63
+        combo_suf = 350
+
+    cases = [":", "l", "u", "c"]
+    leets = _leet_combos(light)
+    leets_combo = _leet_combos_simple(light)
+
+    sufs = list(dict.fromkeys(suffixes))[:suf_lim]
+    prefs = list(dict.fromkeys(prefixes))[:pre_lim]
+    nums = list(dict.fromkeys(NUMERIC_PATTERNS))[:num_suf]
+    syms = list(dict.fromkeys(SYMBOLIC_PATTERNS))[:sym_lim]
+    nums_pre = list(dict.fromkeys(NUMERIC_PATTERNS))[:num_pre]
+
+    append_pats = []
+    for s in sufs:
+        chain = _build_append_rule(s)
+        if chain:
+            append_pats.append(chain)
+    for n in nums:
+        chain = _build_append_rule(n)
+        if chain:
+            append_pats.append(chain)
+    for sym_val in syms:
+        chain = _build_append_rule(sym_val)
+        if chain:
+            append_pats.append(chain)
+    append_pats = list(dict.fromkeys(append_pats))
+
+    prepend_pats = []
+    for p in prefs:
+        chain = _build_prepend_rule(p)
+        if chain:
+            prepend_pats.append(chain)
+    for n in nums_pre:
+        chain = _build_prepend_rule(n)
+        if chain:
+            prepend_pats.append(chain)
+    for sym_val in syms:
+        chain = _build_prepend_rule(sym_val)
+        if chain:
+            prepend_pats.append(chain)
+    prepend_pats = list(dict.fromkeys(prepend_pats))
+
+    combo_pats = []
+    all_sufs_dedup = list(dict.fromkeys(suffixes))
+    all_prefs_dedup = list(dict.fromkeys(prefixes))
+    combo_prefs = all_prefs_dedup[:combo_pre] + nums_pre[:combo_pre]
+    combo_sufs = all_sufs_dedup[:combo_suf] + nums[:combo_suf]
+    for p in list(dict.fromkeys(combo_prefs)):
+        prep = _build_prepend_rule(p)
+        if not prep:
+            continue
+        for s in list(dict.fromkeys(combo_sufs)):
+            app = _build_append_rule(s)
+            if not app:
+                continue
+            combo_pats.append(f"{prep} {app}")
+
+    rules = []
+    # append + prepend: all cases × all leets
+    for case in cases:
+        for leet in leets:
+            head = []
+            if case != ":":
+                head.append(case)
+            if leet:
+                head.append(leet)
+
+            for pat in append_pats:
+                rule = " ".join(head + [pat]) if head else pat
+                rules.append(rule)
+            for pat in prepend_pats:
+                rule = " ".join(head + [pat]) if head else pat
+                rules.append(rule)
+
+    # combos: all 3 cases × leets_combo (singles + pairs + triples)
+    for case in ["c", "l", "u"]:
+        for leet in leets_combo:
+            head = [case]
+            if leet:
+                head.append(leet)
+            for pat in combo_pats:
+                rule = " ".join(head + [pat]) if head else pat
+                rules.append(rule)
+
+    # identity
+    if ":" not in rules:
+        rules.append(":")
+
+    if full:
+        return rules  # skip dedup for full mode (too many rules)
+    return list(dict.fromkeys(rules))
+
+
 def main():
     global VERBOSE
     global LIGHT_MODE
@@ -1052,6 +1229,7 @@ def main():
     group.add_argument('-u', '--users', help='File with usernames, or usernames list: "jony random,fahim jordan,..."')
     group.add_argument('-p', '--password', help='file with words to "passworize", or list like: "ibis,megacorp,..."')
     group.add_argument('-jn', '--just-neighbours', help='Find semantic neighbours using an LLM API.')
+    group.add_argument('-r', '--rules', action='store_true', help='Generate Hashcat rules from suffix/prefix patterns.')
 
     parser.add_argument('-l', '--light', action='store_true', help='Light mode, for small list (passwd mode).')
     parser.add_argument('-f', '--full', action='store_true', help='Full mode. Warning, the output could be very heavy (passwd mode).')
@@ -1130,6 +1308,19 @@ def main():
 
         verbose_print("[+] PASSWORD mode selected.")
         process_passwd(input_list, output_file_name)
+        sys.exit(0)
+
+    if args.rules:
+        all_suf = list(dict.fromkeys(BASIC_SUFIXS + NUMERIC_PATTERNS + SYMBOLIC_PATTERNS))
+        all_pre = list(dict.fromkeys(BASIC_PREFIXS + NUMERIC_PATTERNS + SYMBOLIC_PATTERNS))
+        verbose_print(f"[+] Generating rules ({len(all_suf)} suffixes, {len(all_pre)} prefixes)...")
+        rules = generate_rules(all_suf, all_pre, light=args.light, full=args.full)
+        verbose_print(f"[+] {len(rules)} rules generated.")
+        if OUTPUT_FILE_BULEAN:
+            save_list_to_file(rules, output_file_name)
+        else:
+            for rule in rules:
+                print(rule)
         sys.exit(0)
 
     if args.just_neighbours is not None:

@@ -1,8 +1,10 @@
-# DICMA — The Dictionary Maker
+# DICMA V2 — The Dictionary Maker
 
 Dicma creates massive wordlists based on specific words for password cracking.
 
 It includes extracted patterns from the rockyou.txt dictionary to "passworize" any word or concept. Users often create passwords based on specific words and modify them with symbols, numbers, and capitalization — Dicma generates all those combinations.
+
+Dicma V2 removes deprecated Fasttext machine learning model and use LLM models to generate words related. You can use it with local llm (using ollama for example), or you can use your llm suscription to any platform api compatible with openai library. My personal recomendation is deepseek-v4-flash from https://www.deepseek.com/en/.
 
 ---
 

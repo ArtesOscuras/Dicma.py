@@ -85,8 +85,7 @@ def print_banner():
                       ..    :.    ..                                  
                                                                       """
     print(ascii_art)
-    print("Welcome to DICMA. The Dictionary Maker: 
-")
+    print("Welcome to DICMA. The Dictionary Maker: \n")
 
 def verbose_print(input_string):
     global VERBOSE
@@ -180,8 +179,7 @@ def save_list_to_file(list_, filename):
     try:
         with open(filename, 'w', encoding='utf-8') as f:
             for item in list_:
-                f.write(f"{item}
-")
+                f.write(f"{item}\n")
         verbose_print(f"[+] Dictionary saved successfully to: {filename}")
     except Exception as e:
         print(f"Error saving dictionary: {e}", file=sys.stderr)
@@ -397,9 +395,7 @@ def find_neighbours_batch_windows(model_path, words, number):
         text=True,
         encoding='utf-8'
     )
-    input_data = "
-".join(words) + "
-"
+    input_data = "\n".join(words) + "\n"
     stdout_data, stderr_data = process.communicate(input=input_data)
     if stderr_data:
         print(f"[!] Error from fasttext: {stderr_data}")
@@ -472,9 +468,7 @@ def ml_process_pwd(list_, ml_model, number_neighbours):
 
         except ImportError:
             print("[-] Unable to load fasttext module. Plese install it:")
-            print("  $ git clone https://github.com/facebookresearch/fastText.git
-  $ cd fastText
-  $ sudo pip install .")
+            print("  $ git clone https://github.com/facebookresearch/fastText.git\n  $ cd fastText\n  $ sudo pip install .")
             sys.exit(1)
 
     if system_os == 'windows':
@@ -520,12 +514,10 @@ def worker_generate(word, FULL_MODE, LIGHT_MODE, queue, batch_size=200):
         for line in generate_password_list(word, FULL_MODE, LIGHT_MODE):
             batch.append(line)
             if len(batch) >= batch_size:
-                queue.put('
-'.join(batch))
+                queue.put('\n'.join(batch))
                 batch.clear()
         if batch:
-            queue.put('
-'.join(batch))
+            queue.put('\n'.join(batch))
     except Exception as e:
         queue.put(f"# Error with word '{word}': {e}")   
 
@@ -552,8 +544,7 @@ def massive_mode(list_, output_file_name):
             if cpu_cores == 0:
                 cpu_cores = 1
         if ram <= 15:
-            verbose_print("[!] WARNING! Full mode + multicore could saturate RAM, crash, and go slower than expected. 
-[!] We will use just few cores... Go for a coffe.")
+            verbose_print("[!] WARNING! Full mode + multicore could saturate RAM, crash, and go slower than expected. \n[!] We will use just few cores... Go for a coffe.")
             cpu_cores = cpu_cores // 4
             if cpu_cores == 0:
                 cpu_cores = 1
@@ -584,24 +575,20 @@ def massive_mode(list_, output_file_name):
         while processed_words < total_words:
             try:
                 chunk = queue.get(timeout=5)
-                f.write(chunk + '
-')
+                f.write(chunk + '\n')
             except Exception:
                 if all(r.ready() for r in results):
                     while not queue.empty():
-                        f.write(queue.get() + '
-')
+                        f.write(queue.get() + '\n')
                     processed_words = total_words
 
             processed_words = sum(1 for r in results if r.ready())
             progress = processed_words / total_words * 100
-            print(f"
-[+] Progress: {progress:.2f}%", end='', flush=True)
+            print(f"\n[+] Progress: {progress:.2f}%", end='', flush=True)
 
     pool.close()
     pool.join()
-    print(f"
-[+] Finished. Output saved to {output_file_name}")
+    print(f"\n[+] Finished. Output saved to {output_file_name}")
 
 def generate_password_list(word, FULL_MODE, LIGHT_MODE):
     global amount_of_sufixs_used
